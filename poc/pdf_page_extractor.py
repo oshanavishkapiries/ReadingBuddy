@@ -120,24 +120,128 @@ def crop_rect_from_render(page: fitz.Page, page_img: Image.Image, rect: fitz.Rec
     return page_img.crop((x0, y0, x1, y1))
 
 
+def merge_nearby_rects(rects: List[fitz.Rect], max_gap: float = 25) -> List[fitz.Rect]:
+    """Merge nearby/overlapping rectangles so diagrams are saved as one image."""
+    merged: List[fitz.Rect] = []
+
+    for rect in rects:
+        rect = fitz.Rect(rect)
+
+        did_merge = False
+        for i, existing in enumerate(merged):
+            expanded = fitz.Rect(existing)
+            expanded.x0 -= max_gap
+            expanded.y0 -= max_gap
+            expanded.x1 += max_gap
+            expanded.y1 += max_gap
+
+            if expanded.intersects(rect):
+                merged[i] = existing | rect
+                did_merge = True
+                break
+
+        if not did_merge:
+            merged.append(rect)
+
+    # second pass merge
+    changed = True
+    while changed:
+        changed = False
+        result: List[fitz.Rect] = []
+
+        for rect in merged:
+            merged_into_existing = False
+            for i, existing in enumerate(result):
+                expanded = fitz.Rect(existing)
+                expanded.x0 -= max_gap
+                expanded.y0 -= max_gap
+                expanded.x1 += max_gap
+                expanded.y1 += max_gap
+
+                if expanded.intersects(rect):
+                    result[i] = existing | rect
+                    changed = True
+                    merged_into_existing = True
+                    break
+
+            if not merged_into_existing:
+                result.append(rect)
+
+        merged = result
+
+    return merged
+
+
 def save_image_blocks(page: fitz.Page, page_img: Image.Image, out_dir: Path, min_area: int) -> int:
-    """Crop visible image blocks by their page bbox. Good for 'picture from page' extraction."""
+    """
+    Save normal PDF image blocks + large diagram-like visual regions.
+
+    This fixes pages where diagrams are made from text, lines, arrows, and shapes,
+    not from one embedded image.
+    """
     count = 0
     data = page.get_text("dict")
+    page_area = page.rect.width * page.rect.height
+
+    candidate_rects: List[fitz.Rect] = []
+
+    # 1) Normal embedded image blocks
     for block in data.get("blocks", []):
-        if block.get("type") != 1:  # image block
-            continue
         bbox = block.get("bbox")
         if not bbox:
             continue
+
         rect = fitz.Rect(bbox)
-        crop = crop_rect_from_render(page, page_img, rect)
+        area = rect.width * rect.height
+
+        if block.get("type") == 1:
+            candidate_rects.append(rect)
+
+        # 2) Large text/layout blocks can be diagram labels/captions inside figures
+        # This catches diagrams where PDF stores labels as text objects.
+        elif block.get("type") == 0:
+            if area > page_area * 0.025 and rect.width > page.rect.width * 0.20:
+                candidate_rects.append(rect)
+
+    # 3) Add vector drawings / shapes / arrows / boxes
+    try:
+        drawings = page.get_drawings()
+        for drawing in drawings:
+            rect = drawing.get("rect")
+            if rect:
+                rect = fitz.Rect(rect)
+                if rect.width * rect.height > page_area * 0.001:
+                    candidate_rects.append(rect)
+    except Exception:
+        pass
+
+    if not candidate_rects:
+        return 0
+
+    # Merge diagram parts into larger full-diagram crops
+    merged_rects = merge_nearby_rects(candidate_rects, max_gap=35)
+
+    for rect in merged_rects:
+        # Add padding around diagram
+        rect = fitz.Rect(rect)
+        rect.x0 = max(page.rect.x0, rect.x0 - 12)
+        rect.y0 = max(page.rect.y0, rect.y0 - 12)
+        rect.x1 = min(page.rect.x1, rect.x1 + 12)
+        rect.y1 = min(page.rect.y1, rect.y1 + 12)
+
+        crop = crop_rect_from_render(page, page_img, rect, pad=6)
+
         if crop.width * crop.height < min_area:
             continue
+
+        # Skip almost-full-page crops unless it is really a visual-heavy page
+        if crop.width > page_img.width * 0.95 and crop.height > page_img.height * 0.95:
+            continue
+
         count += 1
         crop.save(out_dir / f"crop_{count:03d}.png")
-    return count
 
+    return count
 
 def save_embedded_images(doc: fitz.Document, page: fitz.Page, out_dir: Path, page_number: int) -> int:
     """Export raw embedded image streams. Useful when crops miss masks/transparent images."""
