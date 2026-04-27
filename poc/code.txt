@@ -1,0 +1,46 @@
+sudo apt-get update
+
+sudo apt-get install fonts-noto-core tesseract-ocr tesseract-ocr-eng fonts-noto-extra
+fc-cache -f -v -y
+
+sudo apt-get install -y \
+  libatk1.0-0t64 \
+  libatk-bridge2.0-0t64 \
+  libcups2t64 \
+  libdrm2 \
+  libxkbcommon0 \
+  libxcomposite1 \
+  libxdamage1 \
+  libxrandr2 \
+  libgbm1 \
+  libasound2t64 \
+  libpangocairo-1.0-0 \
+  libpango-1.0-0 \
+  libgtk-3-0t64 \
+  libnss3 \
+  libxshmfence1
+
+pip install pymupdf pillow pytesseract opencv-python markdown playwright
+
+python -m playwright install chromium
+
+
+===============================
+
+python pdf_page_extractor.py input.pdf -o output --dpi 300 --ocr-mode auto --save-page-render
+
+===============================
+
+export OPENROUTER_API_KEY="your_openrouter_key"
+
+python openrouter_markdown_translator.py output -o sinhala_markdown \
+  --model google/gemini-2.5-flash-lite \
+  --temperature 0.2 \
+  --overwrite \
+  --combine
+
+===============================
+
+python markdown_pages_to_pdf_chromium.py sinhala_markdown -o final.pdf \
+  --image-root output \
+  --font-file ./NotoSansSinhala-Regular.ttf
