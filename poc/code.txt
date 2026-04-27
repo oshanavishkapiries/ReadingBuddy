@@ -27,7 +27,7 @@ python -m playwright install chromium
 
 ===============================
 
-python pdf_page_extractor.py input.pdf -o output --dpi 300 --ocr-mode auto --save-page-render
+python pdf_page_extractor.py input.pdf -o output --dpi 400 --save-page-render --clean
 
 ===============================
 
