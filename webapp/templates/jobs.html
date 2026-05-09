@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="jobs-page">
+    <div class="page-header">
+        <h1>Job History</h1>
+    </div>
+
+    {% if jobs %}
+    <div class="jobs-list">
+        {% for job in jobs %}
+        <a href="/job/{{ job.id }}" class="job-card {% if job.status == 'completed' %}status-completed{% elif job.status == 'failed' %}status-failed{% elif job.status == 'cancelled' %}status-cancelled{% else %}status-processing{% endif %}">
+            <div class="job-info">
+                <div class="job-filename">{{ job.filename }}</div>
+                <div class="job-meta">
+                    <span class="job-id">{{ job.id[:8] }}...</span>
+                    <span class="job-date">{{ job.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+            </div>
+            <div class="job-status">
+                <span class="status-badge status-{{ job.status }}">{{ job.status }}</span>
+                {% if job.status == 'processing' or job.status == 'pending' %}
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ job.progress }}%"></div>
+                </div>
+                {% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No jobs yet. <a href="/">Upload a PDF</a> to get started.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

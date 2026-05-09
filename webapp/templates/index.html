@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="upload-page">
+    <div class="page-header">
+        <h1>Upload PDF</h1>
+        <p>Upload a PDF to extract pages, translate to Sinhala, and generate a translated PDF.</p>
+    </div>
+
+    {% if not has_api_key %}
+    <div class="alert alert-warning">
+        No OpenRouter API key detected. Set the <code>OPENROUTER_API_KEY</code> environment variable or enter it below.
+    </div>
+    {% endif %}
+
+    <form action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
+        <div class="card">
+            <h2>PDF File</h2>
+            <div class="form-group">
+                <label for="file">Select PDF</label>
+                <input type="file" id="file" name="file" accept=".pdf" required class="file-input">
+            </div>
+        </div>
+
+        <details class="card collapsible">
+            <summary>Extraction Settings</summary>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="dpi">DPI</label>
+                        <input type="number" id="dpi" name="dpi" value="{{ default_extraction.dpi }}" min="150" max="600">
+                        <span class="help">Higher DPI = better OCR quality but slower</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="ocr_mode">OCR Mode</label>
+                        <select id="ocr_mode" name="ocr_mode">
+                            <option value="auto" {% if default_extraction.ocr_mode == "auto" %}selected{% endif %}>Auto (when text is weak)</option>
+                            <option value="always" {% if default_extraction.ocr_mode == "always" %}selected{% endif %}>Always</option>
+                            <option value="never" {% if default_extraction.ocr_mode == "never" %}selected{% endif %}>Never</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="lang">OCR Language</label>
+                        <input type="text" id="lang" name="lang" value="{{ default_extraction.lang }}" placeholder="eng">
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <details class="card collapsible">
+            <summary>Translation Settings</summary>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="model">AI Model</label>
+                        <input type="text" id="model" name="model" value="{{ default_translation.model }}" placeholder="openai/gpt-4o-mini">
+                        <span class="help">OpenRouter model ID</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="temperature">Temperature</label>
+                        <input type="number" id="temperature" name="temperature" value="{{ default_translation.temperature }}" min="0" max="1" step="0.1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="api_key">OpenRouter API Key</label>
+                    <input type="password" id="api_key" name="api_key" placeholder="sk-or-..." value="">
+                    <span class="help">Optional if OPENROUTER_API_KEY is set in environment</span>
+                </div>
+            </div>
+        </details>
+
+        <details class="card collapsible">
+            <summary>PDF Output Settings</summary>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="page_size">Page Size</label>
+                        <select id="page_size" name="page_size">
+                            <option value="A4" {% if default_pdf_generation.page_size == "A4" %}selected{% endif %}>A4</option>
+                            <option value="Letter" {% if default_pdf_generation.page_size == "Letter" %}selected{% endif %}>Letter</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="margin">Margin</label>
+                        <input type="text" id="margin" name="margin" value="{{ default_pdf_generation.margin }}">
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <button type="submit" class="btn btn-primary btn-lg">Start Processing</button>
+    </form>
+</div>
+{% endblock %}

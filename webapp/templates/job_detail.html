@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="job-detail-page">
+    <div class="page-header">
+        <h1>{{ job.filename }}</h1>
+        <p class="job-id">Job ID: {{ job.id }}</p>
+    </div>
+
+    <div class="card">
+        <div class="job-status-header">
+            <span class="status-badge status-{{ job.status }}">{{ job.status }}</span>
+            <span class="job-progress-text">{{ job.progress | round(1) }}%</span>
+        </div>
+
+        <div class="progress-bar progress-bar-lg">
+            <div class="progress-fill" id="progress-fill" style="width: {{ job.progress }}%"></div>
+        </div>
+
+        <div class="job-step" id="job-step">
+            <strong>{{ job.current_step }}</strong>
+            {% if job.step_detail %}
+            <p>{{ job.step_detail }}</p>
+            {% endif %}
+        </div>
+
+        {% if job.error %}
+        <div class="alert alert-error">
+            <strong>Error:</strong> {{ job.error }}
+        </div>
+        {% endif %}
+
+        {% if job.status == 'completed' %}
+        <div class="job-actions">
+            <a href="/job/{{ job.id }}/download" class="btn btn-primary">Download PDF</a>
+            <a href="/job/{{ job.id }}/download/markdown" class="btn btn-secondary">Download Markdown</a>
+        </div>
+        {% endif %}
+
+        {% if job.status in ('pending', 'processing') %}
+        <form action="/job/{{ job.id }}/cancel" method="post" style="margin-top: 1rem;">
+            <button type="submit" class="btn btn-danger">Cancel</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function() {
+    const jobId = "{{ job.id }}";
+    const status = "{{ job.status }}";
+
+    if (status === 'pending' || status === 'processing') {
+        setInterval(async () => {
+            try {
+                const res = await fetch(`/job/${jobId}/status`);
+                const data = await res.json();
+
+                document.getElementById('progress-fill').style.width = data.progress + '%';
+                document.querySelector('.job-progress-text').textContent = Math.round(data.progress) + '%';
+
+                const stepEl = document.getElementById('job-step');
+                stepEl.innerHTML = `<strong>${data.current_step}</strong>${data.step_detail ? `<p>${data.step_detail}</p>` : ''}`;
+
+                const badge = document.querySelector('.status-badge');
+                if (badge.textContent.trim() !== data.status) {
+                    badge.textContent = data.status;
+                    badge.className = `status-badge status-${data.status}`;
+
+                    if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
+                        location.reload();
+                    }
+                }
+
+                if (data.error && !document.querySelector('.alert-error')) {
+                    const stepEl = document.getElementById('job-step');
+                    stepEl.insertAdjacentHTML('afterend', `<div class="alert alert-error"><strong>Error:</strong> ${data.error}</div>`);
+                }
+            } catch (e) {
+                console.error('Failed to fetch status:', e);
+            }
+        }, 1500);
+    }
+})();
+</script>
+{% endblock %}
