@@ -46,15 +46,15 @@ class NotifyMiddleware(BaseHTTPMiddleware):
         if notify_cookie and response.headers.get("content-type", "").startswith("text/html"):
             parts = notify_cookie.split("|", 2)
             if len(parts) == 3:
-                notify_html = f"""<script src="/static/js/notify.js"></script>
-<script>document.addEventListener("DOMContentLoaded",()=>{{Notify.{parts[0]}("{parts[1]}",{parts[2]})}})</script>"""
-                if hasattr(response, 'body_iterator'):
-                    body = b"".join([chunk async for chunk in response.body_iterator])
-                    body = body.replace(b"</body>", f"{notify_html.encode()}</body>")
-                    response.headers["content-length"] = str(len(body))
-                    async def iter_body():
-                        yield body
-                    response.body_iterator = iter_body()
+                notify_html = f'<script src="/static/js/notify.js"></script><script>document.addEventListener("DOMContentLoaded",()=>{{Notify.{parts[0]}("{parts[1]}",{parts[2]})}})</script>'
+                body = b""
+                async for chunk in response.body_iterator:
+                    body += chunk
+                body = body.replace(b"</body>", notify_html.encode() + b"</body>")
+                response.headers["content-length"] = str(len(body))
+                async def iter_body():
+                    yield body
+                response.body_iterator = iter_body()
         if notify_cookie:
             response.delete_cookie(key="rb_notify", path="/")
         return response
@@ -69,6 +69,11 @@ drive: DriveManager | None = None
 def startup():
     global drive
     init_db()
+    from webapp.config import OPENROUTER_API_KEY
+    if OPENROUTER_API_KEY:
+        print(f"Backend OpenRouter API key loaded (key: ...{OPENROUTER_API_KEY[-4:]})")
+    else:
+        print("WARNING: No backend OpenRouter API key found in environment")
     try:
         drive = get_drive_manager()
         if drive:

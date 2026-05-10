@@ -12,11 +12,6 @@
     <div class="dashboard-grid">
         <div class="card dashboard-card">
             <h2>Quick Upload</h2>
-            {% if not user.openrouter_api_key and not has_backend_key %}
-            <div class="alert alert-warning">
-                No API key configured. <a href="/settings">Configure in Settings</a> to start processing.
-            </div>
-            {% else %}
             {% if not user.openrouter_api_key and has_backend_key %}
             <div class="plan-badge">Free Plan &middot; {{ usage_count }}/3 today</div>
             {% endif %}
@@ -27,7 +22,6 @@
                 </div>
                 <button type="submit" class="btn btn-primary">Start Processing</button>
             </form>
-            {% endif %}
         </div>
 
         <div class="card dashboard-card">
@@ -37,7 +31,7 @@
                 <div class="plan-label">Premium</div>
                 <p>Unlimited PDF processing with your own API key.</p>
             </div>
-            {% else %}
+            {% elif has_backend_key %}
             <div class="plan-info">
                 <div class="plan-label">Free</div>
                 <div class="plan-limits">
@@ -50,16 +44,18 @@
                         <span class="limit-desc">Pages per PDF</span>
                     </div>
                 </div>
-                {% if has_backend_key %}
                 <div class="plan-usage">
                     <span>Today: {{ usage_count }}/3 used</span>
                     <div class="usage-bar">
                         <div class="usage-fill" style="width:{{ (usage_count / 3) * 100 }}%"></div>
                     </div>
                 </div>
-                {% else %}
-                <a href="/settings" class="btn btn-secondary" style="margin-top:0.75rem">Add your API key for unlimited access</a>
-                {% endif %}
+            </div>
+            {% else %}
+            <div class="plan-info">
+                <div class="plan-label">Not Configured</div>
+                <p>Set your own API key in Settings to start processing.</p>
+                <a href="/settings" class="btn btn-secondary" style="margin-top:0.75rem">Go to Settings</a>
             </div>
             {% endif %}
         </div>
