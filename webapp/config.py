@@ -6,7 +6,10 @@ BASE_DIR = Path(__file__).resolve().parent
 WORKSPACE = BASE_DIR.parent / "workspace"
 WORKSPACE.mkdir(parents=True, exist_ok=True)
 
-DATABASE_URL = f"sqlite:///{BASE_DIR.parent / 'readingbuddy.db'}"
+DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{BASE_DIR.parent / 'readingbuddy.db'}")
+
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini")
 
 DEFAULT_EXTRACTION = {
     "dpi": 300,

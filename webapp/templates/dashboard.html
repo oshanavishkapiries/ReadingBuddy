@@ -12,7 +12,7 @@
     <div class="dashboard-grid">
         <div class="card dashboard-card">
             <h2>Quick Upload</h2>
-            {% if not user.openrouter_api_key %}
+            {% if not user.openrouter_api_key and not has_backend_key %}
             <div class="alert alert-warning">
                 No API key configured. <a href="/settings">Configure in Settings</a> to start processing.
             </div>
@@ -80,7 +80,7 @@
                 </div>
                 <div class="info-row">
                     <span class="info-label">API Key</span>
-                    <span class="info-value">{% if user.openrouter_api_key %}Configured{% else %}Not set{% endif %}</span>
+                    <span class="info-value">{% if user.openrouter_api_key %}Personal key set{% elif has_backend_key %}Using backend key{% else %}Not set{% endif %}</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Model</span>

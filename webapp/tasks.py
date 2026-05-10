@@ -5,7 +5,7 @@ from typing import Dict
 
 from sqlalchemy.orm import Session
 
-from webapp.config import WORKSPACE, DEFAULT_EXTRACTION, DEFAULT_TRANSLATION, DEFAULT_PDF_GENERATION
+from webapp.config import WORKSPACE, DEFAULT_EXTRACTION, DEFAULT_TRANSLATION, DEFAULT_PDF_GENERATION, OPENROUTER_API_KEY
 from webapp.database import SessionLocal
 from webapp.models import update_job_progress, update_job_status
 from webapp.pipeline import extractor, translator, pdf_generator
@@ -45,7 +45,7 @@ def run_pipeline(job_id: str, pdf_path: str, settings: dict):
         trans = settings.get("translation", DEFAULT_TRANSLATION)
         pdf_gen = settings.get("pdf_generation", DEFAULT_PDF_GENERATION)
 
-        api_key = trans.get("api_key", "")
+        api_key = trans.get("api_key", "") or OPENROUTER_API_KEY
         if not api_key:
             raise ValueError("OpenRouter API key is not configured. Please add it in Settings.")
 

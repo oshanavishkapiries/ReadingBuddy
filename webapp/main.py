@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from webapp.config import WORKSPACE, DEFAULT_EXTRACTION, DEFAULT_TRANSLATION, DEFAULT_PDF_GENERATION
+from webapp.config import WORKSPACE, DEFAULT_EXTRACTION, DEFAULT_TRANSLATION, DEFAULT_PDF_GENERATION, OPENROUTER_API_KEY
 from webapp.database import get_db, init_db
 from webapp.models import (
     create_job, get_job, list_jobs, update_job_status,
@@ -109,6 +109,7 @@ async def dashboard(request: Request, user: User = Depends(require_user), db: Se
         "user": user,
         "jobs": jobs,
         "documents": documents,
+        "has_backend_key": bool(OPENROUTER_API_KEY),
     })
 
 
@@ -161,7 +162,8 @@ async def upload_pdf(
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
-    if not user.openrouter_api_key:
+    api_key = user.openrouter_api_key or OPENROUTER_API_KEY
+    if not api_key:
         return RedirectResponse(url="/settings?error=no_api_key", status_code=303)
 
     upload_dir = WORKSPACE / "users" / user.id / "uploads"
@@ -186,7 +188,7 @@ async def upload_pdf(
         "translation": {
             "model": model,
             "temperature": temperature,
-            "api_key": user.openrouter_api_key,
+            "api_key": api_key,
         },
         "pdf_generation": {
             "page_size": page_size,
