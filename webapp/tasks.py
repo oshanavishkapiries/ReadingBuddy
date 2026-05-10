@@ -123,11 +123,9 @@ def run_pipeline(job_id: str, pdf_path: str, settings: dict):
         user_id = settings.get("_user_id", "")
         if user_id:
             try:
-                from webapp.models import log_usage
-                from webapp.database import SessionLocal
+                from webapp.models import log_usage, UsageLog
                 log_db = SessionLocal()
                 try:
-                    from webapp.models import UsageLog
                     usage_entry = log_db.query(UsageLog).filter(UsageLog.job_id == job_id).first()
                     if usage_entry:
                         usage_entry.page_count = page_count

@@ -99,6 +99,12 @@ class DriveManager:
         ).execute()
         return file
 
+    def upload_bytes_local_fallback(self, data: bytes, filename: str, workspace: Path) -> dict:
+        workspace.mkdir(parents=True, exist_ok=True)
+        path = workspace / filename
+        path.write_bytes(data)
+        return {"id": f"local:{path}", "name": filename, "webViewLink": None, "webContentLink": None, "local_path": str(path)}
+
     def download_file(self, file_id: str, dest_path: str):
         request = self._service.files().get_media(fileId=file_id)
         with open(dest_path, "wb") as f:

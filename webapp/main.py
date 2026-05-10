@@ -78,8 +78,9 @@ def startup():
         drive = get_drive_manager()
         if drive:
             drive.initialize()
+            print("Google Drive connected successfully")
     except Exception as e:
-        print(f"Google Drive initialization failed: {e}")
+        print(f"Google Drive disabled: {e}")
         drive = None
 
 
@@ -89,6 +90,13 @@ def _save_upload_to_drive(file: UploadFile, parent_id: str) -> tuple[str, int, s
     saved_name = f"{uuid.uuid4().hex}{ext}"
     result = drive.upload_bytes(content, saved_name, parent_id, mime_type="application/pdf")
     return saved_name, len(content), result["id"]
+
+
+def _save_local_file(content: bytes, filename: str, base_dir: Path) -> str:
+    base_dir.mkdir(parents=True, exist_ok=True)
+    path = base_dir / filename
+    path.write_bytes(content)
+    return str(path)
 
 
 def _save_local_temp(content: bytes, filename: str) -> str:
@@ -208,9 +216,23 @@ async def upload_document(
     db: Session = Depends(get_db),
 ):
     if drive:
-        parent_id = drive.get_user_folder(user.id, "uploads")
-        saved_name, file_size, drive_id = _save_upload_to_drive(file, parent_id)
-        create_document(db, user_id=user.id, filename=saved_name, original_name=file.filename, file_size=file_size, drive_file_id=drive_id)
+        try:
+            parent_id = drive.get_user_folder(user.id, "uploads")
+            saved_name, file_size, drive_id = _save_upload_to_drive(file, parent_id)
+            create_document(db, user_id=user.id, filename=saved_name, original_name=file.filename, file_size=file_size, drive_file_id=drive_id)
+        except Exception as e:
+            if "storageQuotaExceeded" in str(e) or "Service Accounts do not have storage quota" in str(e):
+                file.file.seek(0)
+                upload_dir = WORKSPACE / "users" / user.id / "documents"
+                upload_dir.mkdir(parents=True, exist_ok=True)
+                ext = Path(file.filename).suffix or ".pdf"
+                saved_name = f"{uuid.uuid4().hex}{ext}"
+                saved_path = upload_dir / saved_name
+                content = await file.read()
+                saved_path.write_bytes(content)
+                create_document(db, user_id=user.id, filename=saved_name, original_name=file.filename, file_size=len(content))
+            else:
+                raise
     else:
         upload_dir = WORKSPACE / "users" / user.id / "documents"
         upload_dir.mkdir(parents=True, exist_ok=True)
@@ -556,6 +578,14 @@ async def download_shared(shared_id: str, db: Session = Depends(get_db)):
         return RedirectResponse(url=shared.direct_link, status_code=302)
     if drive and shared.drive_file_id:
         return RedirectResponse(url=drive.get_direct_link(shared.drive_file_id), status_code=302)
+    if shared.job and shared.job.output_pdf:
+        pdf_path = Path(shared.job.output_pdf)
+        if pdf_path.exists():
+            return FileResponse(
+                path=str(pdf_path),
+                filename=f"readingbuddy_{shared.public_name}.pdf",
+                media_type="application/pdf",
+            )
     return HTMLResponse("Download not available", status_code=404)
 
 
