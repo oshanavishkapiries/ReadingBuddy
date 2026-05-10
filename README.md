@@ -27,22 +27,57 @@ On Windows, install Tesseract from: https://github.com/UB-Mannheim/tesseract/wik
 
 ### Environment Variables
 
-```bash
-# Required for translation
-export OPENROUTER_API_KEY="your_openrouter_api_key"
+Copy `.env.example` to `.env` and configure:
 
-# Optional: default model
-export OPENROUTER_MODEL="openai/gpt-4o-mini"
+```bash
+cp .env.example .env
 ```
+
+| Variable | Description | Default |
+|---|---|---|
+| `SECRET_KEY` | JWT secret for session tokens (generate with `python3 -c "import secrets; print(secrets.token_hex(32))"`) | `readingbuddy-secret-change-in-production` |
+| `DATABASE_URL` | Database connection string | `sqlite:///./readingbuddy.db` |
+| `OPENROUTER_API_KEY` | Backend OpenRouter API key (fallback when users don't have their own) | *(empty)* |
+| `OPENROUTER_MODEL` | Default AI model for translation | `openai/gpt-4o-mini` |
 
 ### Run the Application
 
 ```bash
-cd D:\ReadingBuddy
-uvicorn webapp.main:app --reload --host 0.0.0.0 --port 8000
+python3 -m uvicorn webapp.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Open http://localhost:8000 in your browser.
+
+## Features
+
+### User Accounts
+
+- Register and login with username/email + password
+- Session management via JWT cookies (7-day expiry)
+- Passwords hashed with bcrypt
+
+### API Key Fallback
+
+The application resolves the OpenRouter API key in this order:
+
+1. **User's personal key** - Set in Settings page
+2. **Backend key** - `OPENROUTER_API_KEY` environment variable
+3. **Error** - If neither is configured, processing is blocked
+
+### Document Management
+
+- Upload and manage PDF documents
+- View processing history
+- Download translated PDFs and Markdown files
+
+### Settings
+
+Each user can configure their own defaults:
+
+- OpenRouter API key and model
+- Extraction settings (DPI, OCR mode, language)
+- Translation temperature
+- PDF output (page size, margin)
 
 ## Project Structure
 
@@ -52,8 +87,9 @@ ReadingBuddy/
 ├── webapp/                       # Web application
 │   ├── main.py                   # FastAPI app entry point
 │   ├── config.py                 # Configuration
+│   ├── auth.py                   # Authentication (JWT, bcrypt)
 │   ├── database.py               # SQLite database setup
-│   ├── models.py                 # Database models
+│   ├── models.py                 # Database models (User, Document, Job)
 │   ├── tasks.py                  # Background task runner
 │   ├── pipeline/                 # Pipeline modules
 │   │   ├── extractor.py          # PDF extraction
@@ -62,15 +98,16 @@ ReadingBuddy/
 │   ├── static/                   # Static files (CSS)
 │   └── templates/                # Jinja2 HTML templates
 ├── workspace/                    # Job outputs (auto-created)
+├── .env.example                  # Environment variable template
 ├── requirements.txt
 └── README.md
 ```
 
 ## Usage
 
-1. Navigate to the home page
-2. Upload a PDF file
-3. Optionally configure extraction, translation, and output settings
-4. Click "Start Processing"
+1. Navigate to http://localhost:8000
+2. Register a new account or login
+3. Configure your OpenRouter API key in **Settings** (or use the backend default)
+4. Go to **Dashboard** and upload a PDF
 5. Monitor progress on the job detail page
 6. Download the final translated PDF or Markdown files when complete

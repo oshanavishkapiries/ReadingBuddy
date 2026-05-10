@@ -80,7 +80,11 @@
                 </div>
                 <div class="info-row">
                     <span class="info-label">API Key</span>
-                    <span class="info-value">{% if user.openrouter_api_key %}Personal key set{% elif has_backend_key %}Using backend key{% else %}Not set{% endif %}</span>
+                    <span class="info-value">{% if user.openrouter_api_key %}Personal key (unlimited){% elif has_backend_key %}Backend key (3/day){% else %}Not set{% endif %}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Storage</span>
+                    <span class="info-value">{% if uses_drive %}Google Drive{% else %}Local{% endif %}</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Model</span>

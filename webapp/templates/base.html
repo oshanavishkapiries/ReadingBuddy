@@ -16,12 +16,14 @@
                 <a href="/dashboard">Dashboard</a>
                 <a href="/documents">Documents</a>
                 <a href="/jobs">Jobs</a>
+                <a href="/explore">Explore</a>
                 <a href="/settings">Settings</a>
                 <a href="#" class="nav-user">{{ user.username }}</a>
                 <form action="/logout" method="post" style="display:inline">
                     <button type="submit" class="btn btn-secondary" style="padding:0.3rem 0.6rem;font-size:0.8rem">Logout</button>
                 </form>
                 {% else %}
+                <a href="/explore">Explore</a>
                 <a href="/login">Login</a>
                 <a href="/register">Register</a>
                 {% endif %}

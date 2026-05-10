@@ -15,7 +15,7 @@ def natural_sort_key(path: Path):
     return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", path.name)]
 
 
-def make_css(font_family: str, font_file: Optional[Path], page_size: str, margin: str) -> str:
+def make_css(font_family: str, font_file: Optional[Path], page_size: str, margin: str, font_size: float = 16.5) -> str:
     font_face = ""
     if font_file is not None and font_file.exists():
         font_face = f"""
@@ -36,7 +36,7 @@ def make_css(font_family: str, font_file: Optional[Path], page_size: str, margin
 
 html, body {{
   font-family: '{font_family}', 'Noto Serif Sinhala', 'Noto Sans Sinhala', sans-serif;
-  font-size: 16.5pt;
+  font-size: {font_size}pt;
   line-height: 1.6;
   color: #000;
   background: #fff;
@@ -210,6 +210,7 @@ def generate_pdf(
     image_root: Optional[str] = None,
     font_file: Optional[str] = None,
     font_family: str = "SinhalaFont",
+    font_size: float = 16.5,
     page_size: str = "A4",
     margin: str = "18mm",
     progress_callback: Callable[[float, str, str], None] | None = None,
@@ -233,6 +234,7 @@ def generate_pdf(
         font_file=font_path,
         page_size=page_size,
         margin=margin,
+        font_size=font_size,
     )
 
     full_html = build_html(

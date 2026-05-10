@@ -22,6 +22,7 @@ class User(Base):
     translation_temperature = Column(Float, default=0.2)
     pdf_page_size = Column(String, default="A4")
     pdf_margin = Column(String, default="18mm")
+    pdf_font_size = Column(Float, default=16.5)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -39,6 +40,7 @@ class Document(Base):
     original_name = Column(String, nullable=False)
     file_size = Column(Integer, default=0)
     page_count = Column(Integer, default=0)
+    drive_file_id = Column(String, default="")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="documents")
@@ -61,6 +63,7 @@ class Job(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     output_pdf = Column(String, default="")
+    output_pdf_drive_id = Column(String, default="")
     page_count = Column(Integer, default=0)
 
     user = relationship("User", back_populates="jobs")
@@ -103,8 +106,8 @@ def update_user_settings(db: Session, user_id: str, settings: dict) -> User:
     return user
 
 
-def create_document(db: Session, user_id: str, filename: str, original_name: str, file_size: int = 0) -> Document:
-    doc = Document(user_id=user_id, filename=filename, original_name=original_name, file_size=file_size)
+def create_document(db: Session, user_id: str, filename: str, original_name: str, file_size: int = 0, drive_file_id: str = "") -> Document:
+    doc = Document(user_id=user_id, filename=filename, original_name=original_name, file_size=file_size, drive_file_id=drive_file_id)
     db.add(doc)
     db.commit()
     db.refresh(doc)
@@ -160,12 +163,68 @@ def update_job_progress(db: Session, job_id: str, progress: float, step: str, de
         db.commit()
 
 
-def update_job_status(db: Session, job_id: str, status: str, error: str = "", output_pdf: str = ""):
+class SharedDocument(Base):
+    __tablename__ = "shared_documents"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    job_id = Column(String, ForeignKey("jobs.id"), nullable=False, index=True, unique=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    public_name = Column(String, nullable=False)
+    drive_file_id = Column(String, default="")
+    direct_link = Column(String, default="")
+    likes = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    job = relationship("Job")
+    user = relationship("User")
+
+
+def create_shared_document(db: Session, job_id: str, user_id: str, public_name: str) -> SharedDocument:
+    shared = SharedDocument(job_id=job_id, user_id=user_id, public_name=public_name)
+    db.add(shared)
+    db.commit()
+    db.refresh(shared)
+    return shared
+
+
+def get_shared_document(db: Session, shared_id: str) -> SharedDocument | None:
+    return db.query(SharedDocument).filter(SharedDocument.id == shared_id).first()
+
+
+def get_shared_by_job(db: Session, job_id: str) -> SharedDocument | None:
+    return db.query(SharedDocument).filter(SharedDocument.job_id == job_id).first()
+
+
+def delete_shared_document(db: Session, shared_id: str, user_id: str) -> bool:
+    shared = db.query(SharedDocument).filter(SharedDocument.id == shared_id, SharedDocument.user_id == user_id).first()
+    if shared:
+        db.delete(shared)
+        db.commit()
+        return True
+    return False
+
+
+def list_shared_documents(db: Session, limit: int = 50) -> list[SharedDocument]:
+    return db.query(SharedDocument).order_by(SharedDocument.created_at.desc()).limit(limit).all()
+
+
+def like_shared_document(db: Session, shared_id: str) -> SharedDocument | None:
+    shared = db.query(SharedDocument).filter(SharedDocument.id == shared_id).first()
+    if shared:
+        shared.likes += 1
+        db.commit()
+        db.refresh(shared)
+    return shared
+
+
+def update_job_status(db: Session, job_id: str, status: str, error: str = "", output_pdf: str = "", output_pdf_drive_id: str = ""):
     job = db.query(Job).filter(Job.id == job_id).first()
     if job:
         job.status = status
         job.error = error
         job.output_pdf = output_pdf
+        if output_pdf_drive_id:
+            job.output_pdf_drive_id = output_pdf_drive_id
         if status == "completed":
             job.page_count = job.settings.get("page_count", job.page_count)
         job.updated_at = datetime.utcnow()

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Explore - ReadingBuddy{% endblock %}
+
+{% block content %}
+<div class="explore-page">
+    <div class="page-header">
+        <h1>Explore</h1>
+        <p>Discover publicly shared translated documents</p>
+    </div>
+
+    {% if shared_docs %}
+    <div class="explore-grid">
+        {% for shared in shared_docs %}
+        <a href="/shared/{{ shared.id }}" class="explore-card">
+            <div class="explore-card-body">
+                <h3>{{ shared.public_name }}</h3>
+                <p class="explore-author">by {{ shared.job.user.username }}</p>
+                <p class="explore-meta">{{ shared.job.page_count }} pages &middot; {{ shared.created_at.strftime("%b %d, %Y") }}</p>
+            </div>
+            <div class="explore-card-footer">
+                <span class="like-badge">&#9829; {{ shared.likes }}</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No shared documents yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,3 +1,4 @@
+import shutil
 import threading
 import traceback
 from pathlib import Path
@@ -91,12 +92,32 @@ def run_pipeline(job_id: str, pdf_path: str, settings: dict):
             image_root=str(extract_dir),
             font_file=font_file if Path(font_file).exists() else None,
             font_family=pdf_gen.get("font_family", "SinhalaFont"),
+            font_size=pdf_gen.get("font_size", 16.5),
             page_size=pdf_gen.get("page_size", "A4"),
             margin=pdf_gen.get("margin", "18mm"),
             progress_callback=callback,
         )
 
-        update_job_status(db, job_id, "completed", output_pdf=str(output_pdf))
+        drive_id = ""
+        try:
+            from webapp.gdrive import get_drive_manager
+            drive = get_drive_manager()
+            if drive and output_pdf.exists():
+                user_id = settings.get("_user_id", "")
+                if user_id:
+                    parent_id = drive.get_user_folder(user_id, "outputs")
+                else:
+                    parent_id = drive.get_workspace_folder(job_id)
+                result = drive.upload_file(str(output_pdf), parent_id, mime_type="application/pdf")
+                drive_id = result["id"]
+                if Path(pdf_path).exists():
+                    Path(pdf_path).unlink()
+                shutil.rmtree(job_workspace, ignore_errors=True)
+                print(f"Cleaned up workspace for job {job_id}")
+        except Exception as e:
+            print(f"Drive upload failed for job {job_id}: {e}")
+
+        update_job_status(db, job_id, "completed", output_pdf=str(output_pdf), output_pdf_drive_id=drive_id)
         with _lock:
             active_jobs.pop(job_id, None)
 

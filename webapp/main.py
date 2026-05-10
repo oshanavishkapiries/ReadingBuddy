@@ -1,4 +1,5 @@
 import os
+import tempfile
 import uuid
 from pathlib import Path
 
@@ -14,12 +15,15 @@ from webapp.models import (
     create_job, get_job, list_jobs, update_job_status,
     create_document, list_documents, delete_document, get_document,
     create_user, get_user_by_username, get_user_by_email, update_user_settings,
+    create_shared_document, get_shared_document, get_shared_by_job,
+    delete_shared_document, list_shared_documents, like_shared_document,
 )
 from webapp.tasks import start_job, get_job_status
 from webapp.auth import (
     hash_password, verify_password, set_auth_cookie, clear_auth_cookie,
     require_user, optional_user, User,
 )
+from webapp.gdrive import get_drive_manager, DriveManager
 
 app = FastAPI(title="ReadingBuddy")
 
@@ -28,10 +32,36 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
+drive: DriveManager | None = None
+
 
 @app.on_event("startup")
 def startup():
+    global drive
     init_db()
+    try:
+        drive = get_drive_manager()
+        if drive:
+            drive.initialize()
+    except Exception as e:
+        print(f"Google Drive initialization failed: {e}")
+        drive = None
+
+
+def _save_upload_to_drive(file: UploadFile, parent_id: str) -> tuple[str, int, str]:
+    content = file.file.read()
+    ext = Path(file.filename).suffix if file.filename else ".pdf"
+    saved_name = f"{uuid.uuid4().hex}{ext}"
+    result = drive.upload_bytes(content, saved_name, parent_id, mime_type="application/pdf")
+    return saved_name, len(content), result["id"]
+
+
+def _save_local_temp(content: bytes, filename: str) -> str:
+    tmp_dir = WORKSPACE / "temp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    path = tmp_dir / filename
+    path.write_bytes(content)
+    return str(path)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -110,6 +140,7 @@ async def dashboard(request: Request, user: User = Depends(require_user), db: Se
         "jobs": jobs,
         "documents": documents,
         "has_backend_key": bool(OPENROUTER_API_KEY),
+        "uses_drive": drive is not None,
     })
 
 
@@ -125,17 +156,19 @@ async def upload_document(
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
-    upload_dir = WORKSPACE / "users" / user.id / "documents"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
-    ext = Path(file.filename).suffix or ".pdf"
-    saved_name = f"{uuid.uuid4().hex}{ext}"
-    saved_path = upload_dir / saved_name
-
-    content = await file.read()
-    saved_path.write_bytes(content)
-
-    doc = create_document(db, user_id=user.id, filename=saved_name, original_name=file.filename, file_size=len(content))
+    if drive:
+        parent_id = drive.get_user_folder(user.id, "uploads")
+        saved_name, file_size, drive_id = _save_upload_to_drive(file, parent_id)
+        create_document(db, user_id=user.id, filename=saved_name, original_name=file.filename, file_size=file_size, drive_file_id=drive_id)
+    else:
+        upload_dir = WORKSPACE / "users" / user.id / "documents"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        ext = Path(file.filename).suffix or ".pdf"
+        saved_name = f"{uuid.uuid4().hex}{ext}"
+        saved_path = upload_dir / saved_name
+        content = await file.read()
+        saved_path.write_bytes(content)
+        create_document(db, user_id=user.id, filename=saved_name, original_name=file.filename, file_size=len(content))
     return RedirectResponse(url="/documents", status_code=303)
 
 
@@ -145,6 +178,9 @@ async def delete_user_document(
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
+    doc = get_document(db, doc_id, user.id)
+    if doc and drive and doc.drive_file_id:
+        drive.delete_file(doc.drive_file_id)
     delete_document(db, doc_id, user.id)
     return RedirectResponse(url="/documents", status_code=303)
 
@@ -159,6 +195,7 @@ async def upload_pdf(
     temperature: float = Form(0.2),
     page_size: str = Form("A4"),
     margin: str = Form("18mm"),
+    font_size: float = Form(16.5),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
@@ -166,17 +203,23 @@ async def upload_pdf(
     if not api_key:
         return RedirectResponse(url="/settings?error=no_api_key", status_code=303)
 
-    upload_dir = WORKSPACE / "users" / user.id / "uploads"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
+    content = await file.read()
     ext = Path(file.filename).suffix or ".pdf"
     saved_name = f"{uuid.uuid4().hex}{ext}"
-    saved_path = upload_dir / saved_name
 
-    content = await file.read()
-    saved_path.write_bytes(content)
+    if drive:
+        parent_id = drive.get_user_folder(user.id, "uploads")
+        drive_result = drive.upload_bytes(content, saved_name, parent_id, mime_type="application/pdf")
+        drive_id = drive_result["id"]
+        local_path = _save_local_temp(content, saved_name)
+    else:
+        upload_dir = WORKSPACE / "users" / user.id / "uploads"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        local_path = str(upload_dir / saved_name)
+        Path(local_path).write_bytes(content)
+        drive_id = ""
 
-    doc = create_document(db, user_id=user.id, filename=saved_name, original_name=file.filename, file_size=len(content))
+    doc = create_document(db, user_id=user.id, filename=saved_name, original_name=file.filename, file_size=len(content), drive_file_id=drive_id)
 
     settings = {
         "extraction": {
@@ -193,11 +236,13 @@ async def upload_pdf(
         "pdf_generation": {
             "page_size": page_size,
             "margin": margin,
+            "font_size": font_size,
         },
+        "_user_id": user.id,
     }
 
     job = create_job(db, user_id=user.id, filename=file.filename, settings=settings, document_id=doc.id)
-    start_job(job.id, str(saved_path), settings)
+    start_job(job.id, local_path, settings)
 
     return RedirectResponse(url=f"/job/{job.id}", status_code=303)
 
@@ -213,7 +258,8 @@ async def job_detail(request: Request, job_id: str, user: User = Depends(require
     job = get_job(db, job_id, user.id)
     if not job:
         return HTMLResponse("Job not found", status_code=404)
-    return templates.TemplateResponse(request, "job_detail.html", context={"user": user, "job": job})
+    shared = get_shared_by_job(db, job_id)
+    return templates.TemplateResponse(request, "job_detail.html", context={"user": user, "job": job, "shared": shared})
 
 
 @app.get("/job/{job_id}/status")
@@ -238,16 +284,19 @@ async def job_status(job_id: str, user: User = Depends(require_user), db: Sessio
 @app.get("/job/{job_id}/download")
 async def download_pdf(job_id: str, user: User = Depends(require_user), db: Session = Depends(get_db)):
     job = get_job(db, job_id, user.id)
-    if not job or not job.output_pdf:
+    if not job:
         return HTMLResponse("PDF not available", status_code=404)
-    pdf_path = Path(job.output_pdf)
-    if not pdf_path.exists():
-        return HTMLResponse("PDF file not found", status_code=404)
-    return FileResponse(
-        path=str(pdf_path),
-        filename=f"readingbuddy_{job_id}.pdf",
-        media_type="application/pdf",
-    )
+    if drive and job.output_pdf_drive_id:
+        return RedirectResponse(url=drive.get_direct_link(job.output_pdf_drive_id), status_code=302)
+    if job.output_pdf:
+        pdf_path = Path(job.output_pdf)
+        if pdf_path.exists():
+            return FileResponse(
+                path=str(pdf_path),
+                filename=f"readingbuddy_{job_id}.pdf",
+                media_type="application/pdf",
+            )
+    return HTMLResponse("PDF not available", status_code=404)
 
 
 @app.get("/job/{job_id}/download/markdown")
@@ -278,6 +327,104 @@ async def cancel_job(job_id: str, user: User = Depends(require_user), db: Sessio
     return RedirectResponse(url=f"/job/{job_id}", status_code=303)
 
 
+@app.post("/job/{job_id}/share")
+async def share_job(
+    job_id: str,
+    public_name: str = Form(""),
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    job = get_job(db, job_id, user.id)
+    if not job or job.status != "completed":
+        return RedirectResponse(url=f"/job/{job_id}", status_code=303)
+    existing = get_shared_by_job(db, job_id)
+    if existing:
+        return RedirectResponse(url=f"/job/{job_id}", status_code=303)
+
+    name = public_name.strip() or job.filename
+    drive_id = ""
+    direct_link = ""
+
+    if drive and job.output_pdf_drive_id:
+        shared_folder = drive.get_shared_folder(job_id)
+        shared_file = drive.upload_bytes(
+            drive.download_to_bytes(job.output_pdf_drive_id),
+            f"{name}.pdf",
+            shared_folder,
+            mime_type="application/pdf",
+        )
+        drive_id = shared_file["id"]
+        drive.make_public(drive_id)
+        direct_link = drive.get_direct_link(drive_id)
+
+    shared = create_shared_document(db, job_id=job_id, user_id=user.id, public_name=name)
+    if drive_id:
+        shared.drive_file_id = drive_id
+        shared.direct_link = direct_link
+        db.commit()
+
+    return RedirectResponse(url=f"/job/{job_id}", status_code=303)
+
+
+@app.post("/job/{job_id}/unshare")
+async def unshare_job(
+    job_id: str,
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    shared = get_shared_by_job(db, job_id)
+    if shared and shared.user_id == user.id:
+        if drive and shared.drive_file_id:
+            drive.delete_file(shared.drive_file_id)
+        delete_shared_document(db, shared.id, user.id)
+    return RedirectResponse(url=f"/job/{job_id}", status_code=303)
+
+
+@app.post("/shared/{shared_id}/like")
+async def like_document(
+    shared_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    like_shared_document(db, shared_id)
+    referer = request.headers.get("referer", "/explore")
+    return RedirectResponse(url=referer, status_code=303)
+
+
+@app.get("/explore", response_class=HTMLResponse)
+async def explore_page(request: Request, db: Session = Depends(get_db), user: User | None = Depends(optional_user)):
+    shared_docs = list_shared_documents(db, limit=50)
+    return templates.TemplateResponse(request, "explore.html", context={
+        "user": user,
+        "shared_docs": shared_docs,
+    })
+
+
+@app.get("/shared/{shared_id}", response_class=HTMLResponse)
+async def view_shared_document(shared_id: str, request: Request, db: Session = Depends(get_db), user: User | None = Depends(optional_user)):
+    shared = get_shared_document(db, shared_id)
+    if not shared:
+        return HTMLResponse("Document not found", status_code=404)
+    job = shared.job
+    return templates.TemplateResponse(request, "shared_view.html", context={
+        "user": user,
+        "shared": shared,
+        "job": job,
+    })
+
+
+@app.get("/shared/{shared_id}/download")
+async def download_shared(shared_id: str, db: Session = Depends(get_db)):
+    shared = get_shared_document(db, shared_id)
+    if not shared:
+        return HTMLResponse("Document not found", status_code=404)
+    if shared.direct_link:
+        return RedirectResponse(url=shared.direct_link, status_code=302)
+    if drive and shared.drive_file_id:
+        return RedirectResponse(url=drive.get_direct_link(shared.drive_file_id), status_code=302)
+    return HTMLResponse("Download not available", status_code=404)
+
+
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request, user: User = Depends(require_user)):
     error = request.query_params.get("error")
@@ -300,6 +447,7 @@ async def update_settings(
     translation_temperature: float = Form(0.2),
     pdf_page_size: str = Form("A4"),
     pdf_margin: str = Form("18mm"),
+    pdf_font_size: float = Form(16.5),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
@@ -312,10 +460,11 @@ async def update_settings(
         "translation_temperature": translation_temperature,
         "pdf_page_size": pdf_page_size,
         "pdf_margin": pdf_margin,
+        "pdf_font_size": pdf_font_size,
     })
     return RedirectResponse(url="/settings?success=saved", status_code=303)
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "storage": "google_drive" if drive else "local"}

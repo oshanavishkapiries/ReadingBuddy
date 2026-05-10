@@ -32,6 +32,29 @@
         <a href="/job/{{ job.id }}/download" class="btn btn-primary">Download PDF</a>
         <a href="/job/{{ job.id }}/download/markdown" class="btn btn-secondary">Download Markdown</a>
     </div>
+
+    {% if shared %}
+    <div class="card" style="margin-top:1rem">
+        <h2>Shared Publicly</h2>
+        <p class="shared-name">{{ shared.public_name }}</p>
+        <p class="shared-meta">{{ shared.likes }} likes &middot; Shared {{ shared.created_at.strftime("%b %d, %Y") }}</p>
+        <a href="/shared/{{ shared.id }}" class="btn btn-secondary" target="_blank">View Public Link</a>
+        <form action="/job/{{ job.id }}/unshare" method="post" style="display:inline">
+            <button type="submit" class="btn btn-danger">Unshare</button>
+        </form>
+    </div>
+    {% else %}
+    <div class="card" style="margin-top:1rem">
+        <h2>Share This Document</h2>
+        <form action="/job/{{ job.id }}/share" method="post" class="share-form">
+            <div class="form-group">
+                <label for="public_name">Public Name</label>
+                <input type="text" id="public_name" name="public_name" value="{{ job.filename }}" placeholder="Give this document a public name">
+            </div>
+            <button type="submit" class="btn btn-primary">Share Publicly</button>
+        </form>
+    </div>
+    {% endif %}
     {% endif %}
 
     {% if job.status in ("pending", "processing") %}

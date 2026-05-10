@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}{{ shared.public_name }} - ReadingBuddy{% endblock %}
+
+{% block content %}
+<div class="shared-view-page">
+    <div class="page-header">
+        <h1>{{ shared.public_name }}</h1>
+        <p class="shared-meta">
+            Shared by <strong>{{ job.user.username }}</strong> &middot;
+            {{ job.page_count }} pages &middot;
+            {{ shared.created_at.strftime("%b %d, %Y") }}
+        </p>
+    </div>
+
+    <div class="card">
+        <div class="shared-info">
+            <div class="info-row">
+                <span class="info-label">Original File</span>
+                <span class="info-value">{{ job.filename }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Pages</span>
+                <span class="info-value">{{ job.page_count }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Likes</span>
+                <span class="info-value">{{ shared.likes }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="job-actions">
+        {% if shared.direct_link %}
+        <a href="{{ shared.direct_link }}" class="btn btn-primary" target="_blank">Download PDF (Direct Link)</a>
+        {% elif job.output_pdf %}
+        <a href="/shared/{{ shared.id }}/download" class="btn btn-primary">Download PDF</a>
+        {% endif %}
+        {% if job.output_pdf %}
+        <a href="/job/{{ job.id }}/download/markdown" class="btn btn-secondary">Download Markdown</a>
+        {% endif %}
+    </div>
+
+    <form action="/shared/{{ shared.id }}/like" method="post" style="margin-top:1rem">
+        <button type="submit" class="btn btn-secondary">&#9829; Like this document</button>
+    </form>
+</div>
+{% endblock %}
