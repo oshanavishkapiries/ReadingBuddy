@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - ReadingBuddy{% endblock %}
+
+{% block content %}
+<div class="dashboard-page">
+    <div class="page-header">
+        <h1>Dashboard</h1>
+        <p>Welcome back, {{ user.username }}</p>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="card dashboard-card">
+            <h2>Quick Upload</h2>
+            {% if not user.openrouter_api_key %}
+            <div class="alert alert-warning">
+                No API key configured. <a href="/settings">Configure in Settings</a> to start processing.
+            </div>
+            {% else %}
+            <form action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
+                <div class="form-group">
+                    <label for="file">Select PDF</label>
+                    <input type="file" id="file" name="file" accept=".pdf" required class="file-input">
+                </div>
+                <button type="submit" class="btn btn-primary">Start Processing</button>
+            </form>
+            {% endif %}
+        </div>
+
+        <div class="card dashboard-card">
+            <h2>Recent Jobs</h2>
+            {% if jobs %}
+            <div class="recent-list">
+                {% for job in jobs[:5] %}
+                <a href="/job/{{ job.id }}" class="recent-item">
+                    <div>
+                        <div class="recent-name">{{ job.filename }}</div>
+                        <div class="recent-meta">{{ job.created_at.strftime("%b %d, %Y") }}</div>
+                    </div>
+                    <span class="status-badge status-{{ job.status }}">{{ job.status }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            <a href="/jobs" class="view-all">View all jobs &rarr;</a>
+            {% else %}
+            <p class="empty-small">No jobs yet. Upload a PDF to get started.</p>
+            {% endif %}
+        </div>
+
+        <div class="card dashboard-card">
+            <h2>Recent Documents</h2>
+            {% if documents %}
+            <div class="recent-list">
+                {% for doc in documents[:5] %}
+                <div class="recent-item">
+                    <div>
+                        <div class="recent-name">{{ doc.original_name }}</div>
+                        <div class="recent-meta">{{ doc.created_at.strftime("%b %d, %Y") }}</div>
+                    </div>
+                    <span class="recent-size">{{ (doc.file_size / 1024) | round(1) }} KB</span>
+                </div>
+                {% endfor %}
+            </div>
+            <a href="/documents" class="view-all">View all documents &rarr;</a>
+            {% else %}
+            <p class="empty-small">No documents uploaded yet.</p>
+            {% endif %}
+        </div>
+
+        <div class="card dashboard-card">
+            <h2>Account</h2>
+            <div class="account-info">
+                <div class="info-row">
+                    <span class="info-label">Username</span>
+                    <span class="info-value">{{ user.username }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email</span>
+                    <span class="info-value">{{ user.email }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">API Key</span>
+                    <span class="info-value">{% if user.openrouter_api_key %}Configured{% else %}Not set{% endif %}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Model</span>
+                    <span class="info-value">{{ user.openrouter_model }}</span>
+                </div>
+            </div>
+            <a href="/settings" class="btn btn-secondary" style="margin-top:1rem">Manage Settings</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

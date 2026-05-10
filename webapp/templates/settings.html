@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - ReadingBuddy{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+    <div class="page-header">
+        <h1>Settings</h1>
+        <p>Configure your account and processing defaults</p>
+    </div>
+
+    {% if error == "no_api_key" %}
+    <div class="alert alert-error">OpenRouter API key is required to process PDFs. Please configure it below.</div>
+    {% endif %}
+    {% if success == "saved" %}
+    <div class="alert alert-info">Settings saved successfully.</div>
+    {% endif %}
+
+    <form action="/settings" method="post" class="settings-form">
+        <div class="card">
+            <h2>API Configuration</h2>
+            <div class="form-group">
+                <label for="openrouter_api_key">OpenRouter API Key</label>
+                <input type="password" id="openrouter_api_key" name="openrouter_api_key" value="{{ user.openrouter_api_key }}" placeholder="sk-or-...">
+                <span class="help">Your API key is stored securely on the server.</span>
+            </div>
+            <div class="form-group">
+                <label for="openrouter_model">AI Model</label>
+                <input type="text" id="openrouter_model" name="openrouter_model" value="{{ user.openrouter_model }}" placeholder="openai/gpt-4o-mini">
+                <span class="help">OpenRouter model ID for translation</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Extraction Defaults</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="extraction_dpi">DPI</label>
+                    <input type="number" id="extraction_dpi" name="extraction_dpi" value="{{ user.extraction_dpi }}" min="150" max="600">
+                </div>
+                <div class="form-group">
+                    <label for="extraction_ocr_mode">OCR Mode</label>
+                    <select id="extraction_ocr_mode" name="extraction_ocr_mode">
+                        <option value="auto" {% if user.extraction_ocr_mode == "auto" %}selected{% endif %}>Auto</option>
+                        <option value="always" {% if user.extraction_ocr_mode == "always" %}selected{% endif %}>Always</option>
+                        <option value="never" {% if user.extraction_ocr_mode == "never" %}selected{% endif %}>Never</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="extraction_lang">OCR Language</label>
+                    <input type="text" id="extraction_lang" name="extraction_lang" value="{{ user.extraction_lang }}" placeholder="eng">
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Translation Defaults</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="translation_temperature">Temperature</label>
+                    <input type="number" id="translation_temperature" name="translation_temperature" value="{{ user.translation_temperature }}" min="0" max="1" step="0.1">
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>PDF Output Defaults</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="pdf_page_size">Page Size</label>
+                    <select id="pdf_page_size" name="pdf_page_size">
+                        <option value="A4" {% if user.pdf_page_size == "A4" %}selected{% endif %}>A4</option>
+                        <option value="Letter" {% if user.pdf_page_size == "Letter" %}selected{% endif %}>Letter</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="pdf_margin">Margin</label>
+                    <input type="text" id="pdf_margin" name="pdf_margin" value="{{ user.pdf_margin }}">
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg">Save Settings</button>
+    </form>
+</div>
+{% endblock %}

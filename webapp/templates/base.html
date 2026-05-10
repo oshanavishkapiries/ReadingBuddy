@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ReadingBuddy{% endblock %}</title>
-    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
-    <script src="/static/js/settings.js"></script>
     <link rel="stylesheet" href="/static/css/style.css">
     {% block extra_head %}{% endblock %}
 </head>
@@ -14,9 +12,19 @@
         <div class="container">
             <a href="/" class="logo">ReadingBuddy</a>
             <div class="nav-links">
-                <a href="/">Upload</a>
+                {% if user %}
+                <a href="/dashboard">Dashboard</a>
+                <a href="/documents">Documents</a>
                 <a href="/jobs">Jobs</a>
-                <a href="#" id="settings-btn">Settings</a>
+                <a href="/settings">Settings</a>
+                <a href="#" class="nav-user">{{ user.username }}</a>
+                <form action="/logout" method="post" style="display:inline">
+                    <button type="submit" class="btn btn-secondary" style="padding:0.3rem 0.6rem;font-size:0.8rem">Logout</button>
+                </form>
+                {% else %}
+                <a href="/login">Login</a>
+                <a href="/register">Register</a>
+                {% endif %}
             </div>
         </div>
     </nav>
@@ -28,75 +36,6 @@
             <p>ReadingBuddy - PDF to Sinhala Translation Pipeline</p>
         </div>
     </footer>
-
-    <div class="modal-overlay" id="settings-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>Settings</h2>
-                <button class="modal-close" id="settings-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="settings-status" class="settings-status"></div>
-
-                <div class="form-group">
-                    <label for="settings-api-key">OpenRouter API Key</label>
-                    <input type="password" id="settings-api-key" placeholder="sk-or-...">
-                    <span class="help">Your API key is encrypted and stored locally in your browser.</span>
-                </div>
-
-                <div class="form-group">
-                    <label for="settings-model">AI Model</label>
-                    <input type="text" id="settings-model" placeholder="openai/gpt-4o-mini">
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="settings-temperature">Temperature</label>
-                        <input type="number" id="settings-temperature" min="0" max="1" step="0.1" value="0.2">
-                    </div>
-                    <div class="form-group">
-                        <label for="settings-dpi">DPI</label>
-                        <input type="number" id="settings-dpi" min="150" max="600" value="300">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="settings-ocr-mode">OCR Mode</label>
-                        <select id="settings-ocr-mode">
-                            <option value="auto">Auto (when text is weak)</option>
-                            <option value="always">Always</option>
-                            <option value="never">Never</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="settings-lang">OCR Language</label>
-                        <input type="text" id="settings-lang" value="eng" placeholder="eng">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="settings-page-size">Page Size</label>
-                        <select id="settings-page-size">
-                            <option value="A4">A4</option>
-                            <option value="Letter">Letter</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="settings-margin">Margin</label>
-                        <input type="text" id="settings-margin" value="18mm">
-                    </div>
-                </div>
-
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" id="settings-clear">Clear Settings</button>
-                    <button class="btn btn-primary" id="settings-save">Save Settings</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

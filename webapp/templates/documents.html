@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Documents - ReadingBuddy{% endblock %}
+
+{% block content %}
+<div class="documents-page">
+    <div class="page-header">
+        <h1>Documents</h1>
+        <p>Manage your uploaded PDF files</p>
+    </div>
+
+    <div class="card">
+        <h2>Upload Document</h2>
+        <form action="/documents/upload" method="post" enctype="multipart/form-data" class="upload-form">
+            <div class="form-group">
+                <label for="file">Select PDF</label>
+                <input type="file" id="file" name="file" accept=".pdf" required class="file-input">
+            </div>
+            <button type="submit" class="btn btn-primary">Upload</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Your Documents</h2>
+        {% if documents %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Filename</th>
+                    <th>Size</th>
+                    <th>Uploaded</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for doc in documents %}
+                <tr>
+                    <td>{{ doc.original_name }}</td>
+                    <td>{{ (doc.file_size / 1024) | round(1) }} KB</td>
+                    <td>{{ doc.created_at.strftime("%b %d, %Y %H:%M") }}</td>
+                    <td>
+                        <form action="/documents/{{ doc.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Delete this document?')">
+                            <button type="submit" class="btn btn-danger" style="padding:0.3rem 0.6rem;font-size:0.8rem">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">No documents uploaded yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

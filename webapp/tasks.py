@@ -47,7 +47,7 @@ def run_pipeline(job_id: str, pdf_path: str, settings: dict):
 
         api_key = trans.get("api_key", "")
         if not api_key:
-            raise ValueError("OpenRouter API key is required. Please configure it in Settings.")
+            raise ValueError("OpenRouter API key is not configured. Please add it in Settings.")
 
         callback = make_progress_callback(job_id)
 
