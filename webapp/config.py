@@ -8,9 +8,6 @@ WORKSPACE.mkdir(parents=True, exist_ok=True)
 
 DATABASE_URL = f"sqlite:///{BASE_DIR.parent / 'readingbuddy.db'}"
 
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini")
-
 DEFAULT_EXTRACTION = {
     "dpi": 300,
     "ocr_mode": "auto",
@@ -22,7 +19,7 @@ DEFAULT_EXTRACTION = {
 }
 
 DEFAULT_TRANSLATION = {
-    "model": OPENROUTER_MODEL,
+    "model": os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
     "temperature": 0.2,
     "max_tokens": 0,
     "retries": 3,

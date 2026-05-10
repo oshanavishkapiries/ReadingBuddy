@@ -7,13 +7,11 @@
         <p>Upload a PDF to extract pages, translate to Sinhala, and generate a translated PDF.</p>
     </div>
 
-    {% if not has_api_key %}
-    <div class="alert alert-warning">
-        No OpenRouter API key detected. Set the <code>OPENROUTER_API_KEY</code> environment variable or enter it below.
+    <div class="alert alert-info" id="api-key-warning" style="display: none;">
+        No API key configured. Please open <a href="#" id="warning-settings-link">Settings</a> to configure your OpenRouter API key.
     </div>
-    {% endif %}
 
-    <form action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
+    <form action="/upload" method="post" enctype="multipart/form-data" class="upload-form" id="upload-form">
         <div class="card">
             <h2>PDF File</h2>
             <div class="form-group">
@@ -64,7 +62,7 @@
                 <div class="form-group">
                     <label for="api_key">OpenRouter API Key</label>
                     <input type="password" id="api_key" name="api_key" placeholder="sk-or-..." value="">
-                    <span class="help">Optional if OPENROUTER_API_KEY is set in environment</span>
+                    <span class="help">Enter your API key or configure it in Settings.</span>
                 </div>
             </div>
         </details>
@@ -91,4 +89,102 @@
         <button type="submit" class="btn btn-primary btn-lg">Start Processing</button>
     </form>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+    const saved = await SettingsManager.load();
+    if (saved) {
+        const fields = {
+            "settings-api-key": "api_key",
+            "settings-model": "model",
+            "settings-temperature": "temperature",
+            "settings-dpi": "dpi",
+            "settings-ocr-mode": "ocr_mode",
+            "settings-lang": "lang",
+            "settings-page-size": "page_size",
+            "settings-margin": "margin",
+        };
+        for (const [settingsId, formId] of Object.entries(fields)) {
+            const settingsEl = document.getElementById(settingsId);
+            const formEl = document.getElementById(formId);
+            if (settingsEl && saved[formId]) {
+                settingsEl.value = saved[formId];
+            }
+            if (formEl && saved[formId]) {
+                formEl.value = saved[formId];
+            }
+        }
+    } else {
+        document.getElementById("api-key-warning").style.display = "block";
+    }
+
+    document.getElementById("settings-btn").addEventListener("click", (e) => {
+        e.preventDefault();
+        document.getElementById("settings-modal").classList.add("active");
+    });
+
+    document.getElementById("settings-close").addEventListener("click", () => {
+        document.getElementById("settings-modal").classList.remove("active");
+    });
+
+    document.getElementById("settings-modal").addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) {
+            e.currentTarget.classList.remove("active");
+        }
+    });
+
+    document.getElementById("settings-save").addEventListener("click", async () => {
+        const settings = {
+            api_key: document.getElementById("settings-api-key").value,
+            model: document.getElementById("settings-model").value,
+            temperature: document.getElementById("settings-temperature").value,
+            dpi: document.getElementById("settings-dpi").value,
+            ocr_mode: document.getElementById("settings-ocr-mode").value,
+            lang: document.getElementById("settings-lang").value,
+            page_size: document.getElementById("settings-page-size").value,
+            margin: document.getElementById("settings-margin").value,
+        };
+        await SettingsManager.save(settings);
+        document.getElementById("api-key-warning").style.display = "none";
+        document.getElementById("settings-status").textContent = "Settings saved successfully!";
+        setTimeout(() => {
+            document.getElementById("settings-status").textContent = "";
+        }, 3000);
+    });
+
+    document.getElementById("settings-clear").addEventListener("click", async () => {
+        SettingsManager.clear();
+        document.getElementById("settings-api-key").value = "";
+        document.getElementById("settings-model").value = "openai/gpt-4o-mini";
+        document.getElementById("settings-temperature").value = "0.2";
+        document.getElementById("settings-dpi").value = "300";
+        document.getElementById("settings-ocr-mode").value = "auto";
+        document.getElementById("settings-lang").value = "eng";
+        document.getElementById("settings-page-size").value = "A4";
+        document.getElementById("settings-margin").value = "18mm";
+        document.getElementById("api-key-warning").style.display = "block";
+        document.getElementById("settings-status").textContent = "Settings cleared.";
+        setTimeout(() => {
+            document.getElementById("settings-status").textContent = "";
+        }, 3000);
+    });
+
+    document.getElementById("warning-settings-link").addEventListener("click", (e) => {
+        e.preventDefault();
+        document.getElementById("settings-modal").classList.add("active");
+    });
+
+    document.getElementById("upload-form").addEventListener("submit", async () => {
+        const apiKeyInput = document.getElementById("api_key");
+        if (!apiKeyInput.value) {
+            const saved = await SettingsManager.load();
+            if (saved && saved.api_key) {
+                apiKeyInput.value = saved.api_key;
+            }
+        }
+    });
+});
+</script>
 {% endblock %}

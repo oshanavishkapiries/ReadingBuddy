@@ -1,7 +1,6 @@
 /workspace/
 __pycache__/
 *.pyc
-.env
 *.db
 webapp/static/uploads/
 webapp/workspace/

@@ -40,6 +40,7 @@ def safe_name(text: str, max_len: int = 80) -> str:
 
 
 def render_page(page: fitz.Page, dpi: int) -> Image.Image:
+    fitz = _get_fitz()
     zoom = dpi / 72.0
     matrix = fitz.Matrix(zoom, zoom)
     pix = page.get_pixmap(matrix=matrix, alpha=False)
@@ -82,6 +83,7 @@ def run_ocr(img: Image.Image, lang: str, psm: int) -> str:
 
 
 def crop_rect_from_render(page: fitz.Page, page_img: Image.Image, rect: fitz.Rect, pad: int = 4) -> Image.Image:
+    fitz = _get_fitz()
     scale_x = page_img.width / float(page.rect.width)
     scale_y = page_img.height / float(page.rect.height)
     x0 = max(0, int(rect.x0 * scale_x) - pad)
@@ -92,6 +94,7 @@ def crop_rect_from_render(page: fitz.Page, page_img: Image.Image, rect: fitz.Rec
 
 
 def merge_nearby_rects(rects: List[fitz.Rect], max_gap: float = 25) -> List[fitz.Rect]:
+    fitz = _get_fitz()
     merged: List[fitz.Rect] = []
     for rect in rects:
         rect = fitz.Rect(rect)
@@ -132,6 +135,7 @@ def merge_nearby_rects(rects: List[fitz.Rect], max_gap: float = 25) -> List[fitz
 
 
 def save_image_blocks(page: fitz.Page, page_img: Image.Image, out_dir: Path, min_area: int) -> int:
+    fitz = _get_fitz()
     count = 0
     data = page.get_text("dict")
     page_area = page.rect.width * page.rect.height

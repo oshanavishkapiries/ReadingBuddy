@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from webapp.config import WORKSPACE, DEFAULT_EXTRACTION, DEFAULT_TRANSLATION, DEFAULT_PDF_GENERATION, OPENROUTER_API_KEY
+from webapp.config import WORKSPACE, DEFAULT_EXTRACTION, DEFAULT_TRANSLATION, DEFAULT_PDF_GENERATION
 from webapp.database import get_db, init_db
 from webapp.models import create_job, get_job, list_jobs, update_job_status
 from webapp.tasks import start_job, get_job_status
@@ -28,12 +28,10 @@ def startup():
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "index.html", context={
         "default_extraction": DEFAULT_EXTRACTION,
         "default_translation": DEFAULT_TRANSLATION,
         "default_pdf_generation": DEFAULT_PDF_GENERATION,
-        "has_api_key": bool(OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY")),
     })
 
 
@@ -50,6 +48,9 @@ async def upload_pdf(
     margin: str = Form("18mm"),
     db: Session = Depends(get_db),
 ):
+    if not api_key.strip():
+        return RedirectResponse(url="/", status_code=303)
+
     upload_dir = WORKSPACE / "uploads"
     upload_dir.mkdir(parents=True, exist_ok=True)
 
@@ -87,7 +88,7 @@ async def upload_pdf(
 @app.get("/jobs", response_class=HTMLResponse)
 async def jobs_page(request: Request, db: Session = Depends(get_db)):
     jobs = list_jobs(db)
-    return templates.TemplateResponse("jobs.html", {"request": request, "jobs": jobs})
+    return templates.TemplateResponse(request, "jobs.html", context={"jobs": jobs})
 
 
 @app.get("/job/{job_id}", response_class=HTMLResponse)
@@ -95,7 +96,7 @@ async def job_detail(request: Request, job_id: str, db: Session = Depends(get_db
     job = get_job(db, job_id)
     if not job:
         return HTMLResponse("Job not found", status_code=404)
-    return templates.TemplateResponse("job_detail.html", {"request": request, "job": job})
+    return templates.TemplateResponse(request, "job_detail.html", context={"job": job})
 
 
 @app.get("/job/{job_id}/status")
