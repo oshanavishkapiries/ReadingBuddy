@@ -9,13 +9,19 @@
         <p>View and manage your processing jobs</p>
     </div>
 
+    <div class="job-tabs">
+        <button class="tab-btn active" data-tab="active" onclick="filterJobs('active')">Active</button>
+        <button class="tab-btn" data-tab="completed" onclick="filterJobs('completed')">Completed</button>
+        <button class="tab-btn" data-tab="all" onclick="filterJobs('all')">All</button>
+    </div>
+
     {% if jobs %}
     {% for job in jobs %}
-    <a href="/job/{{ job.id }}" class="job-card">
+    <a href="/job/{{ job.id }}" class="job-card" data-status="{{ job.status }}">
         <div>
             <div class="job-filename">{{ job.filename }}</div>
             <div class="job-meta">
-                <span class="job-id">{{ job.id[:8] }}...</span>
+                <span class="job-id">{{ job.id[:8] }}</span>
                 <span>{{ job.created_at.strftime("%b %d, %Y %H:%M") }}</span>
             </div>
         </div>
@@ -31,9 +37,46 @@
     {% endfor %}
     {% else %}
     <div class="empty-state">
-        <p>No jobs yet.</p>
-        <a href="/dashboard">Upload a PDF</a> to get started.
+        <svg class="empty-illustration" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="40" y="20" width="120" height="100" rx="8" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2"/>
+            <rect x="55" y="40" width="60" height="6" rx="3" fill="#d1d5db"/>
+            <rect x="55" y="55" width="90" height="6" rx="3" fill="#d1d5db"/>
+            <rect x="55" y="70" width="75" height="6" rx="3" fill="#d1d5db"/>
+            <rect x="55" y="85" width="45" height="6" rx="3" fill="#d1d5db"/>
+            <circle cx="140" cy="100" r="20" fill="#e34c26" opacity="0.15"/>
+            <path d="M133 100l5 5 9-9" stroke="#e34c26" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h3>No jobs yet</h3>
+        <p>Jobs will appear here when you process a document.</p>
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function filterJobs(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+
+    document.querySelectorAll('.job-card').forEach(card => {
+        const status = card.dataset.status;
+        if (tab === 'all') {
+            card.style.display = '';
+        } else if (tab === 'active') {
+            card.style.display = (status === 'pending' || status === 'processing') ? '' : 'none';
+        } else if (tab === 'completed') {
+            card.style.display = (status === 'completed' || status === 'failed' || status === 'cancelled') ? '' : 'none';
+        }
+    });
+
+    const emptyState = document.querySelector('.empty-state');
+    if (emptyState) {
+        const anyVisible = Array.from(document.querySelectorAll('.job-card')).some(c => c.style.display !== 'none');
+        emptyState.style.display = anyVisible ? 'none' : '';
+    }
+}
+
+filterJobs('active');
+</script>
 {% endblock %}

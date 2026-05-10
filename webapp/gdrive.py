@@ -1,7 +1,9 @@
+import base64
 import io
+import json
 import os
 from pathlib import Path
-from typing import BinaryIO, Optional
+from typing import Optional
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -17,19 +19,21 @@ FOLDER_STRUCTURE = {
 
 
 class DriveManager:
-    def __init__(self, root_folder_id: str, credentials_path: Optional[str] = None):
+    def __init__(self, root_folder_id: str, credentials_b64: str = ""):
         self.root_folder_id = root_folder_id
         self._service = None
         self._folder_cache = {}
         self._initialized = False
 
-        if credentials_path and Path(credentials_path).exists():
-            creds = service_account.Credentials.from_service_account_file(
-                credentials_path, scopes=SCOPES
+        if credentials_b64:
+            creds_json = base64.b64decode(credentials_b64)
+            creds_dict = json.loads(creds_json)
+            creds = service_account.Credentials.from_service_account_info(
+                creds_dict, scopes=SCOPES
             )
             self._service = build("drive", "v3", credentials=creds)
         else:
-            raise ValueError(f"Google Drive credentials not found at: {credentials_path}")
+            raise ValueError("Google Drive credentials (base64) are required")
 
     @property
     def service(self):
@@ -140,7 +144,7 @@ class DriveManager:
 
 def get_drive_manager() -> Optional[DriveManager]:
     root_folder_id = os.environ.get("GOOGLE_DRIVE_ROOT_FOLDER_ID", "")
-    credentials_path = os.environ.get("GOOGLE_DRIVE_CREDENTIALS_PATH", "")
+    credentials_b64 = os.environ.get("GOOGLE_DRIVE_CREDENTIALS_B64", "")
     if not root_folder_id:
         return None
-    return DriveManager(root_folder_id, credentials_path)
+    return DriveManager(root_folder_id, credentials_b64)

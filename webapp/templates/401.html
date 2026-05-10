@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}401 - Not Authenticated{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <div class="error-card">
+        <div class="error-code">401</div>
+        <h1>Not Authenticated</h1>
+        <p>You need to be logged in to access this page.</p>
+        <div class="error-actions">
+            <a href="/login" class="btn btn-primary">Sign In</a>
+            <a href="/register" class="btn btn-secondary">Create Account</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

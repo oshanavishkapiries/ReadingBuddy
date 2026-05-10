@@ -26,7 +26,18 @@
     </div>
     {% else %}
     <div class="empty-state">
-        <p>No shared documents yet.</p>
+        <svg class="empty-illustration" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="30" y="40" width="60" height="80" rx="4" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2"/>
+            <rect x="110" y="40" width="60" height="80" rx="4" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2"/>
+            <rect x="40" y="55" width="40" height="4" rx="2" fill="#d1d5db"/>
+            <rect x="40" y="65" width="30" height="4" rx="2" fill="#d1d5db"/>
+            <rect x="120" y="55" width="40" height="4" rx="2" fill="#d1d5db"/>
+            <rect x="120" y="65" width="30" height="4" rx="2" fill="#d1d5db"/>
+            <circle cx="100" cy="90" r="16" fill="#e34c26" opacity="0.15"/>
+            <path d="M94 90l4 4 8-8" stroke="#e34c26" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h3>Nothing shared yet</h3>
+        <p>Translated documents shared by users will appear here.</p>
     </div>
     {% endif %}
 </div>

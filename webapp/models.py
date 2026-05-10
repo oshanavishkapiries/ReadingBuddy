@@ -229,3 +229,32 @@ def update_job_status(db: Session, job_id: str, status: str, error: str = "", ou
             job.page_count = job.settings.get("page_count", job.page_count)
         job.updated_at = datetime.utcnow()
         db.commit()
+
+
+class UsageLog(Base):
+    __tablename__ = "usage_logs"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    job_id = Column(String, ForeignKey("jobs.id"), nullable=True)
+    date = Column(String, nullable=False, index=True)
+    page_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+
+
+def get_today_usage(db: Session, user_id: str) -> tuple[int, int]:
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    logs = db.query(UsageLog).filter(UsageLog.user_id == user_id, UsageLog.date == today).all()
+    count = len(logs)
+    total_pages = sum(log.page_count for log in logs)
+    return count, total_pages
+
+
+def log_usage(db: Session, user_id: str, job_id: str, page_count: int):
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    entry = UsageLog(user_id=user_id, job_id=job_id, date=today, page_count=page_count)
+    db.add(entry)
+    db.commit()
+    return entry

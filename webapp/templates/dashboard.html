@@ -17,6 +17,9 @@
                 No API key configured. <a href="/settings">Configure in Settings</a> to start processing.
             </div>
             {% else %}
+            {% if not user.openrouter_api_key and has_backend_key %}
+            <div class="plan-badge">Free Plan &middot; {{ usage_count }}/3 today</div>
+            {% endif %}
             <form action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
                 <div class="form-group">
                     <label for="file">Select PDF</label>
@@ -28,14 +31,48 @@
         </div>
 
         <div class="card dashboard-card">
-            <h2>Recent Jobs</h2>
+            <h2>Plan</h2>
+            {% if user.openrouter_api_key %}
+            <div class="plan-info">
+                <div class="plan-label">Premium</div>
+                <p>Unlimited PDF processing with your own API key.</p>
+            </div>
+            {% else %}
+            <div class="plan-info">
+                <div class="plan-label">Free</div>
+                <div class="plan-limits">
+                    <div class="limit-item">
+                        <span class="limit-value">3</span>
+                        <span class="limit-desc">PDFs per day</span>
+                    </div>
+                    <div class="limit-item">
+                        <span class="limit-value">100</span>
+                        <span class="limit-desc">Pages per PDF</span>
+                    </div>
+                </div>
+                {% if has_backend_key %}
+                <div class="plan-usage">
+                    <span>Today: {{ usage_count }}/3 used</span>
+                    <div class="usage-bar">
+                        <div class="usage-fill" style="width:{{ (usage_count / 3) * 100 }}%"></div>
+                    </div>
+                </div>
+                {% else %}
+                <a href="/settings" class="btn btn-secondary" style="margin-top:0.75rem">Add your API key for unlimited access</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card dashboard-card">
+            <h2>Active Jobs</h2>
             {% if jobs %}
             <div class="recent-list">
                 {% for job in jobs[:5] %}
                 <a href="/job/{{ job.id }}" class="recent-item">
                     <div>
                         <div class="recent-name">{{ job.filename }}</div>
-                        <div class="recent-meta">{{ job.created_at.strftime("%b %d, %Y") }}</div>
+                        <div class="recent-meta">{{ job.created_at.strftime("%b %d, %Y %H:%M") }}</div>
                     </div>
                     <span class="status-badge status-{{ job.status }}">{{ job.status }}</span>
                 </a>
@@ -43,7 +80,7 @@
             </div>
             <a href="/jobs" class="view-all">View all jobs &rarr;</a>
             {% else %}
-            <p class="empty-small">No jobs yet. Upload a PDF to get started.</p>
+            <p class="empty-small">No active jobs. <a href="/documents">Upload a document</a> and use the Translate tool.</p>
             {% endif %}
         </div>
 
@@ -77,10 +114,6 @@
                 <div class="info-row">
                     <span class="info-label">Email</span>
                     <span class="info-value">{{ user.email }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">API Key</span>
-                    <span class="info-value">{% if user.openrouter_api_key %}Personal key (unlimited){% elif has_backend_key %}Backend key (3/day){% else %}Not set{% endif %}</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Storage</span>

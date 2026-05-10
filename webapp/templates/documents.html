@@ -11,6 +11,9 @@
 
     <div class="card">
         <h2>Upload Document</h2>
+        {% if not user.openrouter_api_key and has_backend_key %}
+        <div class="plan-badge">Free Plan &middot; {{ usage_count }}/3 today</div>
+        {% endif %}
         <form action="/documents/upload" method="post" enctype="multipart/form-data" class="upload-form">
             <div class="form-group">
                 <label for="file">Select PDF</label>
@@ -20,36 +23,110 @@
         </form>
     </div>
 
-    <div class="card">
-        <h2>Your Documents</h2>
-        {% if documents %}
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Filename</th>
-                    <th>Size</th>
-                    <th>Uploaded</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for doc in documents %}
-                <tr>
-                    <td>{{ doc.original_name }}</td>
-                    <td>{{ (doc.file_size / 1024) | round(1) }} KB</td>
-                    <td>{{ doc.created_at.strftime("%b %d, %Y %H:%M") }}</td>
-                    <td>
-                        <form action="/documents/{{ doc.id }}/delete" method="post" style="display:inline" onsubmit="return confirm('Delete this document?')">
-                            <button type="submit" class="btn btn-danger" style="padding:0.3rem 0.6rem;font-size:0.8rem">Delete</button>
+    {% if documents %}
+    {% for doc in documents %}
+    <div class="doc-card">
+        <div class="doc-card-header">
+            <div class="doc-info">
+                <div class="doc-name">{{ doc.original_name }}</div>
+                <div class="doc-meta">
+                    <span>{{ (doc.file_size / 1024) | round(1) }} KB</span>
+                    <span>{{ doc.created_at.strftime("%b %d, %Y %H:%M") }}</span>
+                </div>
+            </div>
+            <div class="doc-actions">
+                <form action="/documents/{{ doc.id }}/delete" method="post" class="doc-delete" onsubmit="return confirm('Delete this document?')">
+                    <button type="submit" class="btn btn-secondary" style="padding:0.3rem 0.6rem;font-size:0.8rem">Delete</button>
+                </form>
+                <button type="button" class="btn btn-primary tools-toggle" style="padding:0.3rem 0.8rem;font-size:0.8rem" onclick="toggleTools('{{ doc.id }}')">
+                    Tools &#9662;
+                </button>
+            </div>
+        </div>
+
+        <details class="doc-tools" id="tools-{{ doc.id }}">
+            <summary>Available Tools</summary>
+            <div class="tools-list">
+                <div class="tool-item">
+                    <div class="tool-icon">&#128221;</div>
+                    <div class="tool-body">
+                        <h4>Translate</h4>
+                        <p>Translate this document to Sinhala and generate a translated PDF.</p>
+                        <form action="/documents/{{ doc.id }}/translate" method="post" class="tool-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="model-{{ doc.id }}">AI Model</label>
+                                    <input type="text" id="model-{{ doc.id }}" name="model" value="{{ user.openrouter_model }}" placeholder="openai/gpt-4o-mini">
+                                </div>
+                                <div class="form-group">
+                                    <label for="temperature-{{ doc.id }}">Temperature</label>
+                                    <input type="number" id="temperature-{{ doc.id }}" name="temperature" value="{{ user.translation_temperature }}" min="0" max="1" step="0.1">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="dpi-{{ doc.id }}">DPI</label>
+                                    <input type="number" id="dpi-{{ doc.id }}" name="dpi" value="{{ user.extraction_dpi }}" min="150" max="600">
+                                </div>
+                                <div class="form-group">
+                                    <label for="ocr-{{ doc.id }}">OCR Mode</label>
+                                    <select id="ocr-{{ doc.id }}" name="ocr_mode">
+                                        <option value="auto" {% if user.extraction_ocr_mode == "auto" %}selected{% endif %}>Auto</option>
+                                        <option value="always" {% if user.extraction_ocr_mode == "always" %}selected{% endif %}>Always</option>
+                                        <option value="never" {% if user.extraction_ocr_mode == "never" %}selected{% endif %}>Never</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="page_size-{{ doc.id }}">Page Size</label>
+                                    <select id="page_size-{{ doc.id }}" name="page_size">
+                                        <option value="A4" {% if user.pdf_page_size == "A4" %}selected{% endif %}>A4</option>
+                                        <option value="Letter" {% if user.pdf_page_size == "Letter" %}selected{% endif %}>Letter</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="font_size-{{ doc.id }}">Font Size</label>
+                                    <input type="number" id="font_size-{{ doc.id }}" name="font_size" value="{{ user.pdf_font_size }}" min="8" max="36" step="0.5">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Start Translation</button>
                         </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p class="empty-state">No documents uploaded yet.</p>
-        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </details>
     </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <svg class="empty-illustration" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="50" y="30" width="100" height="110" rx="6" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2"/>
+            <path d="M50 50h100" stroke="#e5e7eb" stroke-width="2"/>
+            <rect x="65" y="65" width="50" height="5" rx="2.5" fill="#d1d5db"/>
+            <rect x="65" y="80" width="70" height="5" rx="2.5" fill="#d1d5db"/>
+            <rect x="65" y="95" width="40" height="5" rx="2.5" fill="#d1d5db"/>
+            <rect x="65" y="110" width="55" height="5" rx="2.5" fill="#d1d5db"/>
+            <circle cx="150" cy="40" r="14" fill="#e34c26" opacity="0.15"/>
+            <path d="M145 40h10M150 35v10" stroke="#e34c26" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <h3>No documents yet</h3>
+        <p>Upload a PDF to get started with translation.</p>
+    </div>
+    </div>
+    {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleTools(docId) {
+    const details = document.getElementById('tools-' + docId);
+    if (details.open) {
+        details.removeAttribute('open');
+    } else {
+        details.setAttribute('open', '');
+    }
+}
+</script>
 {% endblock %}

@@ -8,16 +8,6 @@
         <h1>Create Account</h1>
         <p class="auth-subtitle">Sign up to get started</p>
 
-        {% if error == "password_mismatch" %}
-        <div class="alert alert-error">Passwords do not match</div>
-        {% elif error == "password_short" %}
-        <div class="alert alert-error">Password must be at least 6 characters</div>
-        {% elif error == "username_taken" %}
-        <div class="alert alert-error">Username is already taken</div>
-        {% elif error == "email_taken" %}
-        <div class="alert alert-error">Email is already registered</div>
-        {% endif %}
-
         <form action="/register" method="post" class="auth-form">
             <div class="form-group">
                 <label for="username">Username</label>
@@ -43,4 +33,22 @@
         </p>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if error %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    {% if error == "password_mismatch" %}
+    Notify.error("Passwords do not match");
+    {% elif error == "password_short" %}
+    Notify.error("Password must be at least 6 characters");
+    {% elif error == "username_taken" %}
+    Notify.error("Username is already taken");
+    {% elif error == "email_taken" %}
+    Notify.error("Email is already registered");
+    {% endif %}
+});
+</script>
+{% endif %}
 {% endblock %}

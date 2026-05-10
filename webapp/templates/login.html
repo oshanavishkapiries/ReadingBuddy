@@ -8,10 +8,6 @@
         <h1>Login</h1>
         <p class="auth-subtitle">Sign in to your account</p>
 
-        {% if error == "invalid" %}
-        <div class="alert alert-error">Invalid username or password</div>
-        {% endif %}
-
         <form action="/login" method="post" class="auth-form">
             <div class="form-group">
                 <label for="username">Username</label>
@@ -29,4 +25,12 @@
         </p>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if error == "invalid" %}
+<script>
+document.addEventListener("DOMContentLoaded", () => Notify.error("Invalid username or password"));
+</script>
+{% endif %}
 {% endblock %}

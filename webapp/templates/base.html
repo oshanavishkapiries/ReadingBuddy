@@ -38,6 +38,19 @@
             <p>ReadingBuddy - PDF to Sinhala Translation Pipeline</p>
         </div>
     </footer>
+
+    <div id="notify-container"></div>
+
+    <script src="/static/js/notify.js"></script>
+    {% if notify %}
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        {% for n in notify %}
+        Notify.{{ n.type }}("{{ n.message }}", {{ n.duration | default(4000) }});
+        {% endfor %}
+    });
+    </script>
+    {% endif %}
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

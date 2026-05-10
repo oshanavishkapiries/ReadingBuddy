@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}403 - Forbidden{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <div class="error-card">
+        <div class="error-code">403</div>
+        <h1>Access Denied</h1>
+        <p>You don't have permission to access this resource.</p>
+        <div class="error-actions">
+            {% if user %}
+            <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+            {% else %}
+            <a href="/login" class="btn btn-primary">Go to Login</a>
+            {% endif %}
+            <a href="javascript:history.back()" class="btn btn-secondary">Go Back</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

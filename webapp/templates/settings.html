@@ -9,13 +9,6 @@
         <p>Configure your account and processing defaults</p>
     </div>
 
-    {% if error == "no_api_key" %}
-    <div class="alert alert-error">OpenRouter API key is required to process PDFs. Please configure it below.</div>
-    {% endif %}
-    {% if success == "saved" %}
-    <div class="alert alert-info">Settings saved successfully.</div>
-    {% endif %}
-
     <form action="/settings" method="post" class="settings-form">
         <div class="card">
             <h2>API Configuration</h2>

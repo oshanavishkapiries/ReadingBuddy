@@ -67,6 +67,9 @@ def run_pipeline(job_id: str, pdf_path: str, settings: dict):
         )
 
         page_count = manifest.get("pages", 0)
+        if page_count > 100:
+            raise ValueError(f"PDF has {page_count} pages. Free plan limit is 100 pages per document.")
+
         update_job_progress(db, job_id, 5, "Extraction complete", f"Extracted {page_count} pages")
         update_job_progress(db, job_id, 10, "Translating", "Starting translation...")
 
@@ -116,6 +119,23 @@ def run_pipeline(job_id: str, pdf_path: str, settings: dict):
                 print(f"Cleaned up workspace for job {job_id}")
         except Exception as e:
             print(f"Drive upload failed for job {job_id}: {e}")
+
+        user_id = settings.get("_user_id", "")
+        if user_id:
+            try:
+                from webapp.models import log_usage
+                from webapp.database import SessionLocal
+                log_db = SessionLocal()
+                try:
+                    from webapp.models import UsageLog
+                    usage_entry = log_db.query(UsageLog).filter(UsageLog.job_id == job_id).first()
+                    if usage_entry:
+                        usage_entry.page_count = page_count
+                        log_db.commit()
+                finally:
+                    log_db.close()
+            except Exception as e:
+                print(f"Failed to update usage log: {e}")
 
         update_job_status(db, job_id, "completed", output_pdf=str(output_pdf), output_pdf_drive_id=drive_id)
         with _lock:
