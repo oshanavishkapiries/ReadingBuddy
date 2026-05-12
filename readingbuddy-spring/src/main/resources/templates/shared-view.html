@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Shared Document')}"></head>
+<body>
+
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<div class="container" style="max-width:600px">
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title" th:text="${shared.publicName}">Document</h5>
+            <p class="text-muted">
+                Shared by <strong th:text="${shared.user.username}">user</strong>
+                &middot;
+                <span th:text="${#temporals.format(shared.createdAt, 'MMMM dd, yyyy')}">date</span>
+                &middot;
+                <i class="bi bi-heart-fill text-danger"></i>
+                <span th:text="${shared.likes}">0</span> likes
+            </p>
+
+            <div th:if="${job != null}" class="mb-3 p-3 bg-light rounded small">
+                <div>Pages: <strong th:text="${job.pageCount}">0</strong></div>
+                <div>Original file: <strong th:text="${job.filename}">file.pdf</strong></div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <a th:href="@{/shared/{id}/download(id=${shared.id})}"
+                   class="btn btn-success">
+                    <i class="bi bi-download me-1"></i>Download PDF
+                </a>
+
+                <form th:action="@{/shared/{id}/like(id=${shared.id})}" method="post">
+                    <button type="submit" class="btn btn-outline-secondary">
+                        <i class="bi bi-heart me-1"></i>Like
+                    </button>
+                </form>
+
+                <a th:href="@{/explore}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Back
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

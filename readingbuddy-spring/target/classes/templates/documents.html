@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Documents')}"></head>
+<body>
+
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">My Documents</h5>
+        <!-- Upload modal trigger -->
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
+            <i class="bi bi-upload me-1"></i>Upload PDF
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                <tr>
+                    <th>Filename</th>
+                    <th>Size</th>
+                    <th>Uploaded</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="doc : ${documents}">
+                    <td th:text="${doc.originalName}">file.pdf</td>
+                    <td th:text="${#numbers.formatInteger(doc.fileSize / 1024, 1)} + ' KB'">0 KB</td>
+                    <!--
+                      #temporals is Thymeleaf's date/time utility — replaces Python's strftime.
+                      Equivalent to: {{ doc.created_at.strftime('%b %d, %Y') }}
+                    -->
+                    <td th:text="${#temporals.format(doc.createdAt, 'MMM dd, yyyy')}">Jan 01, 2025</td>
+                    <td class="text-end">
+                        <!-- Translate button opens settings modal with docId pre-filled -->
+                        <button class="btn btn-sm btn-outline-primary me-1"
+                                th:attr="data-doc-id=${doc.id}, data-doc-name=${doc.originalName}"
+                                data-bs-toggle="modal" data-bs-target="#translateModal"
+                                onclick="setTranslateDoc(this)">
+                            Translate
+                        </button>
+                        <!-- Delete — POST form (browsers don't support DELETE from HTML) -->
+                        <form th:action="@{/documents/{id}/delete(id=${doc.id})}"
+                              method="post" class="d-inline"
+                              onsubmit="return confirm('Delete this document?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(documents)}">
+                    <td colspan="4" class="text-center text-muted py-4">No documents uploaded yet</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Upload modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upload PDF</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form th:action="@{/documents/upload}" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">PDF file</label>
+                        <input type="file" name="file" class="form-control" accept=".pdf" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Upload</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Translate modal -->
+<div class="modal fade" id="translateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Translate Document</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="translateForm" method="post">
+                    <input type="hidden" name="model"
+                           th:value="${currentUser != null} ? ${currentUser.openrouterModel} : 'openai/gpt-4o-mini'">
+                    <input type="hidden" name="dpi"
+                           th:value="${currentUser != null} ? ${currentUser.extractionDpi} : '300'">
+                    <input type="hidden" name="fontSize"
+                           th:value="${currentUser != null} ? ${currentUser.pdfFontSize} : '16.5'">
+                    <p>Translate <strong id="translateDocName"></strong> to Sinhala?</p>
+                    <button type="submit" class="btn btn-primary w-100">Start Translation</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function setTranslateDoc(btn) {
+        const id = btn.getAttribute('data-doc-id');
+        const name = btn.getAttribute('data-doc-name');
+        document.getElementById('translateDocName').textContent = name;
+        document.getElementById('translateForm').action = '/documents/' + id + '/translate';
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

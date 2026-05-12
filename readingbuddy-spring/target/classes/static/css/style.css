@@ -1,0 +1,27 @@
+/* ReadingBuddy Spring Boot — supplemental styles */
+
+body {
+    background-color: #f8f9fa;
+}
+
+.navbar-brand {
+    font-size: 1.1rem;
+}
+
+.card {
+    border: 1px solid #dee2e6;
+    border-radius: .5rem;
+}
+
+.progress {
+    border-radius: .25rem;
+}
+
+/* Toast auto-dismiss after 4 seconds */
+#notifyToast {
+    animation: fadeOut 0.4s ease-in-out 4s forwards;
+}
+
+@keyframes fadeOut {
+    to { opacity: 0; visibility: hidden; }
+}

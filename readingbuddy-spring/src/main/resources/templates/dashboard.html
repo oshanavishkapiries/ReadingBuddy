@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Dashboard')}"></head>
+<body>
+
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<div class="container">
+
+    <!-- Usage warning — same logic as Python's usage_count >= 3 check -->
+    <div th:if="${usageCount >= 3 and !hasBackendKey}" class="alert alert-warning">
+        Daily free-tier limit reached (3/3).
+        <a th:href="@{/settings}">Add your own API key</a> for unlimited access.
+    </div>
+
+    <div class="row g-4">
+        <!-- Quick upload form -->
+        <div class="col-md-5">
+            <div class="card h-100">
+                <div class="card-header fw-semibold">Translate a PDF</div>
+                <div class="card-body">
+                    <!--
+                      enctype="multipart/form-data" is required for file uploads.
+                      Spring's @RequestParam MultipartFile maps to the "file" field.
+                    -->
+                    <form th:action="@{/upload}" method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label class="form-label">PDF file</label>
+                            <input type="file" name="file" class="form-control" accept=".pdf" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Model</label>
+                            <input type="text" name="model" class="form-control"
+                                   th:value="${currentUser.openrouterModel}">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-translate me-1"></i>Translate
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent jobs -->
+        <div class="col-md-7">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">Recent Jobs</span>
+                    <a th:href="@{/jobs}" class="btn btn-sm btn-outline-secondary">View all</a>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                        <!--
+                          th:each is Thymeleaf's loop — replaces Jinja2's {% for job in jobs %}.
+                          th:text outputs text safely (HTML-escaped) — replaces {{ job.filename }}.
+                        -->
+                        <tr th:each="job : ${jobs}">
+                            <td>
+                                <a th:href="@{/job/{id}(id=${job.id})}"
+                                   th:text="${job.filename}">file.pdf</a>
+                            </td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${job.status.name() == 'COMPLETED'} ? 'bg-success'
+                                                    : (${job.status.name() == 'FAILED'} ? 'bg-danger'
+                                                    : (${job.status.name() == 'PROCESSING'} ? 'bg-warning text-dark'
+                                                    : 'bg-secondary'))"
+                                      th:text="${job.status}">PENDING</span>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(jobs)}">
+                            <td colspan="2" class="text-muted text-center py-3">No jobs yet</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

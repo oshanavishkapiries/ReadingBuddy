@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Explore')}"></head>
+<body>
+
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<div class="container">
+    <h5 class="mb-4">Community Translations</h5>
+
+    <div class="row g-3">
+        <div th:each="doc : ${sharedDocs}" class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-title" th:text="${doc.publicName}">Document</h6>
+                    <p class="text-muted small">
+                        Shared by <span th:text="${doc.user.username}">user</span>
+                        &middot;
+                        <span th:text="${#temporals.format(doc.createdAt, 'MMM dd, yyyy')}">date</span>
+                    </p>
+                    <div class="d-flex gap-2">
+                        <a th:href="@{/shared/{id}(id=${doc.id})}"
+                           class="btn btn-sm btn-outline-primary">View</a>
+
+                        <!-- Like button — POST because it modifies state -->
+                        <form th:action="@{/shared/{id}/like(id=${doc.id})}" method="post">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-heart"></i>
+                                <span th:text="${doc.likes}">0</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${#lists.isEmpty(sharedDocs)}" class="col-12">
+            <p class="text-muted text-center py-5">No shared documents yet. Be the first!</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

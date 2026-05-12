@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Settings')}"></head>
+<body>
+
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<div class="container" style="max-width:600px">
+    <h5 class="mb-3">Settings</h5>
+
+    <!--
+      th:object="${user}" sets the form's command object.
+      th:value="*{fieldName}" reads from that object — replaces Jinja2's {{ user.field }}.
+    -->
+    <form th:action="@{/settings}" method="post">
+        <div class="card mb-3">
+            <div class="card-header fw-semibold">API</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">OpenRouter API Key</label>
+                    <input type="password" name="openrouterApiKey" class="form-control"
+                           th:value="${currentUser.openrouterApiKey}">
+                    <div class="form-text">Leave blank to use the site's shared key (3 translations/day).</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Default Model</label>
+                    <input type="text" name="openrouterModel" class="form-control"
+                           th:value="${currentUser.openrouterModel}">
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header fw-semibold">Extraction</div>
+            <div class="card-body row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">DPI</label>
+                    <input type="number" name="extractionDpi" class="form-control"
+                           th:value="${currentUser.extractionDpi}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">OCR Mode</label>
+                    <select name="extractionOcrMode" class="form-select">
+                        <option value="auto"   th:selected="${currentUser.extractionOcrMode == 'auto'}">Auto</option>
+                        <option value="always" th:selected="${currentUser.extractionOcrMode == 'always'}">Always</option>
+                        <option value="never"  th:selected="${currentUser.extractionOcrMode == 'never'}">Never</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Language</label>
+                    <input type="text" name="extractionLang" class="form-control"
+                           th:value="${currentUser.extractionLang}">
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header fw-semibold">Output PDF</div>
+            <div class="card-body row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Page Size</label>
+                    <select name="pdfPageSize" class="form-select">
+                        <option value="A4"     th:selected="${currentUser.pdfPageSize == 'A4'}">A4</option>
+                        <option value="LETTER" th:selected="${currentUser.pdfPageSize == 'LETTER'}">Letter</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Margin</label>
+                    <input type="text" name="pdfMargin" class="form-control"
+                           th:value="${currentUser.pdfMargin}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Font Size (pt)</label>
+                    <input type="number" step="0.5" name="pdfFontSize" class="form-control"
+                           th:value="${currentUser.pdfFontSize}">
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Translation Temperature</label>
+            <input type="number" step="0.1" min="0" max="2" name="translationTemperature"
+                   class="form-control" th:value="${currentUser.translationTemperature}">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+    </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Login')}"></head>
+<body class="bg-light">
+
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<div class="container" style="max-width:400px">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4 class="card-title mb-4">Sign in</h4>
+
+            <!-- th:if replaces Jinja2's {% if error %} -->
+            <div th:if="${error}" class="alert alert-danger py-2">
+                <!-- th:switch / th:case replace Python's error query param checks -->
+                <span th:switch="${error}">
+                    <span th:case="'invalid'">Invalid username or password.</span>
+                    <span th:case="*">Login failed. Please try again.</span>
+                </span>
+            </div>
+
+            <!--
+              th:action="@{/login}" generates a context-aware URL — equivalent to Python's
+              action="/login". Thymeleaf also adds the CSRF token automatically when enabled.
+            -->
+            <form th:action="@{/login}" method="post">
+                <div class="mb-3">
+                    <label class="form-label">Username</label>
+                    <input type="text" name="username" class="form-control" required autofocus>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Password</label>
+                    <input type="password" name="password" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Login</button>
+            </form>
+
+            <p class="text-center mt-3 mb-0">
+                No account? <a th:href="@{/register}">Register</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

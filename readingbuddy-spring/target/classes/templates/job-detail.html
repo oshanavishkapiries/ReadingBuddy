@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(title='Job Detail')}"></head>
+<body>
+
+<nav th:replace="~{fragments/nav :: nav}"></nav>
+
+<div class="container" style="max-width:700px">
+
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-semibold" th:text="${job.filename}">file.pdf</span>
+            <span class="badge"
+                  th:classappend="${job.status.name() == 'COMPLETED'} ? 'bg-success'
+                                : (${job.status.name() == 'FAILED'} ? 'bg-danger'
+                                : (${job.status.name() == 'CANCELLED'} ? 'bg-secondary'
+                                : 'bg-warning text-dark'))"
+                  th:id="statusBadge"
+                  th:text="${job.status}">PENDING</span>
+        </div>
+
+        <div class="card-body">
+            <!-- Live progress bar — updated by JS polling /job/{id}/status -->
+            <div class="mb-3">
+                <div class="d-flex justify-content-between small text-muted mb-1">
+                    <span id="stepLabel" th:text="${job.currentStep}">Queued</span>
+                    <span id="progressLabel" th:text="${job.progress} + '%'">0%</span>
+                </div>
+                <div class="progress">
+                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                         th:style="'width:' + ${job.progress} + '%'"></div>
+                </div>
+                <p id="stepDetail" class="small text-muted mt-1" th:text="${job.stepDetail}"></p>
+            </div>
+
+            <div th:if="${job.error}" class="alert alert-danger py-2" th:text="${job.error}"></div>
+
+            <!-- Actions -->
+            <div class="d-flex gap-2 flex-wrap">
+                <!-- Download PDF — only when completed -->
+                <a th:if="${job.status.name() == 'COMPLETED'}"
+                   th:href="@{/job/{id}/download(id=${job.id})}"
+                   class="btn btn-success">
+                    <i class="bi bi-download me-1"></i>Download PDF
+                </a>
+
+                <!-- Cancel — only when running -->
+                <form th:if="${job.status.name() == 'PENDING' or job.status.name() == 'PROCESSING'}"
+                      th:action="@{/job/{id}/cancel(id=${job.id})}" method="post">
+                    <button type="submit" class="btn btn-outline-danger">Cancel</button>
+                </form>
+
+                <!-- Share / Unshare -->
+                <div th:if="${job.status.name() == 'COMPLETED'}">
+                    <div th:if="${shared == null}">
+                        <form th:action="@{/job/{id}/share(id=${job.id})}" method="post"
+                              class="d-flex gap-2">
+                            <input type="text" name="publicName" class="form-control form-control-sm"
+                                   placeholder="Public name (optional)"
+                                   th:value="${job.filename}">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Share</button>
+                        </form>
+                    </div>
+                    <div th:if="${shared != null}" class="d-flex gap-2 align-items-center">
+                        <a th:href="@{/shared/{id}(id=${shared.id})}" class="btn btn-sm btn-outline-info">
+                            View public page
+                        </a>
+                        <form th:action="@{/job/{id}/unshare(id=${job.id})}" method="post">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Unshare</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    // Poll /job/{id}/status every 2 seconds while the job is active.
+    // Python equivalent: the job_detail.html template's fetch() calls to GET /job/{job_id}/status
+    const jobId   = /*[[${job.id}]]*/ '';
+    const initial = /*[[${job.status.name()}]]*/ 'PENDING';
+
+    function poll() {
+        fetch('/job/' + jobId + '/status')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('progressBar').style.width = data.progress + '%';
+                document.getElementById('progressLabel').textContent = Math.round(data.progress) + '%';
+                document.getElementById('stepLabel').textContent = data.currentStep || '';
+                document.getElementById('stepDetail').textContent = data.stepDetail || '';
+                document.getElementById('statusBadge').textContent = data.status.toUpperCase();
+
+                if (data.status === 'pending' || data.status === 'processing') {
+                    setTimeout(poll, 2000);
+                } else {
+                    // Reload to show download/share buttons once the job is done
+                    location.reload();
+                }
+            });
+    }
+
+    if (initial === 'PENDING' || initial === 'PROCESSING') {
+        setTimeout(poll, 1000);
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
