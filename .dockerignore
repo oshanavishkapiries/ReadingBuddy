@@ -1,7 +1,15 @@
 __pycache__/
+**/__pycache__/
 *.pyc
+*.pyo
 .git/
+.gitignore
 workspace/
 *.db
 .env
 .venv/
+venv/
+spring/
+*.log
+todo.md
+README.md

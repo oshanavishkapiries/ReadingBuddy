@@ -15,7 +15,7 @@
             <div class="form-group">
                 <label for="openrouter_api_key">OpenRouter API Key</label>
                 <input type="password" id="openrouter_api_key" name="openrouter_api_key" value="{{ user.openrouter_api_key }}" placeholder="sk-or-...">
-                <span class="help">Optional. Leave empty to use the backend key (3 PDFs/day limit). Your own key gives unlimited usage.</span>
+                <span class="help">Optional. Leave empty to use the backend key (daily limit applies). Your own key gives unlimited usage.</span>
             </div>
             <div class="form-group">
                 <label for="openrouter_model">AI Model</label>
@@ -49,6 +49,18 @@
         <div class="card">
             <h2>Translation Defaults</h2>
             <div class="form-row">
+                <div class="form-group">
+                    <label for="translation_language">Target Language</label>
+                    <select id="translation_language" name="translation_language">
+                        <option value="sinhala"  {% if user.translation_language == "sinhala"  %}selected{% endif %}>Sinhala</option>
+                        <option value="tamil"    {% if user.translation_language == "tamil"    %}selected{% endif %}>Tamil</option>
+                        <option value="hindi"    {% if user.translation_language == "hindi"    %}selected{% endif %}>Hindi</option>
+                        <option value="chinese"  {% if user.translation_language == "chinese"  %}selected{% endif %}>Chinese (Simplified)</option>
+                        <option value="japanese" {% if user.translation_language == "japanese" %}selected{% endif %}>Japanese</option>
+                        <option value="korean"   {% if user.translation_language == "korean"   %}selected{% endif %}>Korean</option>
+                        <option value="arabic"   {% if user.translation_language == "arabic"   %}selected{% endif %}>Arabic</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label for="translation_temperature">Temperature</label>
                     <input type="number" id="translation_temperature" name="translation_temperature" value="{{ user.translation_temperature }}" min="0" max="1" step="0.1">

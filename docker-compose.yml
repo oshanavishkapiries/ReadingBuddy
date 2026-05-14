@@ -1,0 +1,27 @@
+services:
+  readingbuddy:
+    build: .
+    ports:
+      - "8080:8000"
+    # Load secrets and config from .env (copy .env.example → .env and fill in values)
+    env_file:
+      - .env
+    environment:
+      # Always route the DB to the persistent volume, regardless of what .env says
+      DATABASE_URL: sqlite:////app/data/readingbuddy.db
+    volumes:
+      # SQLite database — survives container restarts and rebuilds
+      - readingbuddy_data:/app/data
+      # Uploaded PDFs, extracted pages, translated markdown, generated PDFs
+      - readingbuddy_workspace:/app/workspace
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  readingbuddy_data:
+  readingbuddy_workspace:

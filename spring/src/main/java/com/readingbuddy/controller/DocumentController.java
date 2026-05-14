@@ -31,6 +31,9 @@ public class DocumentController extends BaseController {
     @Value("${app.openrouter-api-key:}")
     private String backendApiKey;
 
+    @Value("${app.daily-limit}")
+    private int dailyLimit;
+
     @GetMapping("/documents")
     public String documentsPage(Model model) {
         User user = securityUtils.requireCurrentUser();
@@ -38,6 +41,7 @@ public class DocumentController extends BaseController {
         model.addAttribute("documents", documentService.listDocuments(user.getId(), 50));
         model.addAttribute("hasBackendKey", !backendApiKey.isBlank());
         model.addAttribute("usageCount", usageCount);
+        model.addAttribute("dailyLimit", dailyLimit);
         return "documents";
     }
 
@@ -62,11 +66,12 @@ public class DocumentController extends BaseController {
                                     @RequestParam(defaultValue = "300") int dpi,
                                     @RequestParam(defaultValue = "auto") String ocrMode,
                                     @RequestParam(defaultValue = "eng") String lang,
-                                    @RequestParam(defaultValue = "openai/gpt-4o-mini") String model,
+                                    @RequestParam(defaultValue = "google/gemini-2.5-flash") String model,
+                                    @RequestParam(defaultValue = "sinhala") String translationLanguage,
                                     @RequestParam(defaultValue = "0.2") double temperature,
                                     @RequestParam(defaultValue = "A4") String pageSize,
                                     @RequestParam(defaultValue = "18mm") String margin,
-                                    @RequestParam(defaultValue = "16.5") double fontSize,
+                                    @RequestParam(defaultValue = "10.0") double fontSize,
                                     HttpServletResponse response) throws Exception {
 
         User user = securityUtils.requireCurrentUser();
@@ -78,7 +83,7 @@ public class DocumentController extends BaseController {
         }
         if (isUsingBackendKey(user) && usageService.isLimitReached(user.getId())) {
             return redirectWithNotify(response, "/documents", "warning",
-                    "Daily limit reached (3/3). Add your own API key for unlimited access.");
+                    "Daily limit reached. Add your own API key for unlimited access.");
         }
 
         Document doc = documentService.getDocument(docId, user.getId())
@@ -86,8 +91,8 @@ public class DocumentController extends BaseController {
         if (doc == null) return "redirect:/documents";
 
         Path localPath = documentService.resolveLocalPath(doc, user);
-        Map<String, Object> settings = buildSettings(dpi, ocrMode, lang, model, temperature,
-                pageSize, margin, fontSize, apiKey, user.getId());
+        Map<String, Object> settings = buildSettings(dpi, ocrMode, lang, model, translationLanguage,
+                temperature, pageSize, margin, fontSize, apiKey, user.getId());
 
         Job job = jobService.createJob(user, doc, doc.getOriginalName(), settings);
         if (isUsingBackendKey(user)) usageService.logUsage(user, job);
@@ -102,11 +107,12 @@ public class DocumentController extends BaseController {
                                      @RequestParam(defaultValue = "300") int dpi,
                                      @RequestParam(defaultValue = "auto") String ocrMode,
                                      @RequestParam(defaultValue = "eng") String lang,
-                                     @RequestParam(defaultValue = "openai/gpt-4o-mini") String model,
+                                     @RequestParam(defaultValue = "google/gemini-2.5-flash") String model,
+                                     @RequestParam(defaultValue = "sinhala") String translationLanguage,
                                      @RequestParam(defaultValue = "0.2") double temperature,
                                      @RequestParam(defaultValue = "A4") String pageSize,
                                      @RequestParam(defaultValue = "18mm") String margin,
-                                     @RequestParam(defaultValue = "16.5") double fontSize,
+                                     @RequestParam(defaultValue = "10.0") double fontSize,
                                      HttpServletResponse response) throws Exception {
 
         User user = securityUtils.requireCurrentUser();
@@ -118,13 +124,13 @@ public class DocumentController extends BaseController {
         }
         if (isUsingBackendKey(user) && usageService.isLimitReached(user.getId())) {
             return redirectWithNotify(response, "/dashboard", "warning",
-                    "Daily limit reached (3/3). Add your own API key for unlimited access.");
+                    "Daily limit reached. Add your own API key for unlimited access.");
         }
 
         Document doc = documentService.uploadDocument(file, user);
         Path localPath = documentService.resolveLocalPath(doc, user);
-        Map<String, Object> settings = buildSettings(dpi, ocrMode, lang, model, temperature,
-                pageSize, margin, fontSize, apiKey, user.getId());
+        Map<String, Object> settings = buildSettings(dpi, ocrMode, lang, model, translationLanguage,
+                temperature, pageSize, margin, fontSize, apiKey, user.getId());
 
         Job job = jobService.createJob(user, doc, file.getOriginalFilename(), settings);
         if (isUsingBackendKey(user)) usageService.logUsage(user, job);
@@ -146,12 +152,14 @@ public class DocumentController extends BaseController {
     }
 
     private Map<String, Object> buildSettings(int dpi, String ocrMode, String lang,
-                                               String model, double temperature,
+                                               String model, String translationLanguage,
+                                               double temperature,
                                                String pageSize, String margin, double fontSize,
                                                String apiKey, String userId) {
         Map<String, Object> settings = new HashMap<>();
         settings.put("extraction",     Map.of("dpi", dpi, "ocr_mode", ocrMode, "lang", lang));
-        settings.put("translation",    Map.of("model", model, "temperature", temperature, "api_key", apiKey));
+        settings.put("translation",    Map.of("model", model, "language", translationLanguage,
+                                              "temperature", temperature, "api_key", apiKey));
         settings.put("pdf_generation", Map.of("page_size", pageSize, "margin", margin, "font_size", fontSize));
         settings.put("_user_id",       userId);
         return settings;

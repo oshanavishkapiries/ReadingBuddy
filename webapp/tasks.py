@@ -6,7 +6,7 @@ from typing import Dict
 
 from sqlalchemy.orm import Session
 
-from webapp.config import WORKSPACE, DEFAULT_EXTRACTION, DEFAULT_TRANSLATION, DEFAULT_PDF_GENERATION, OPENROUTER_API_KEY
+from webapp.config import WORKSPACE, DEFAULT_EXTRACTION, DEFAULT_TRANSLATION, DEFAULT_PDF_GENERATION, OPENROUTER_API_KEY, PAGE_LIMIT
 from webapp.database import SessionLocal
 from webapp.models import update_job_progress, update_job_status
 from webapp.pipeline import extractor, translator, pdf_generator
@@ -67,8 +67,8 @@ def run_pipeline(job_id: str, pdf_path: str, settings: dict):
         )
 
         page_count = manifest.get("pages", 0)
-        if page_count > 100:
-            raise ValueError(f"PDF has {page_count} pages. Free plan limit is 100 pages per document.")
+        if page_count > PAGE_LIMIT:
+            raise ValueError(f"PDF has {page_count} pages. Limit is {PAGE_LIMIT} pages per document.")
 
         update_job_progress(db, job_id, 5, "Extraction complete", f"Extracted {page_count} pages")
         update_job_progress(db, job_id, 10, "Translating", "Starting translation...")
@@ -78,6 +78,7 @@ def run_pipeline(job_id: str, pdf_path: str, settings: dict):
             output_dir=str(markdown_dir),
             api_key=api_key,
             model=trans.get("model", DEFAULT_TRANSLATION["model"]),
+            language=trans.get("language", "sinhala"),
             temperature=trans.get("temperature", 0.2),
             max_tokens=trans.get("max_tokens", 0),
             retries=trans.get("retries", 3),

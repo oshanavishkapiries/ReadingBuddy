@@ -7,9 +7,9 @@
 
 <div class="container">
 
-    <!-- Usage warning — same logic as Python's usage_count >= 3 check -->
-    <div th:if="${usageCount >= 3 and !hasBackendKey}" class="alert alert-warning">
-        Daily free-tier limit reached (3/3).
+    <!-- Usage warning — mirrors Python's usage_count >= DAILY_LIMIT check -->
+    <div th:if="${usageCount >= dailyLimit and !hasBackendKey}" class="alert alert-warning">
+        Daily free-tier limit reached (<span th:text="${dailyLimit}"></span>/<span th:text="${dailyLimit}"></span>).
         <a th:href="@{/settings}">Add your own API key</a> for unlimited access.
     </div>
 

@@ -51,6 +51,9 @@ public class User {
     private String extractionLang = "eng";
 
     @Builder.Default
+    private String translationLanguage = "sinhala";
+
+    @Builder.Default
     private double translationTemperature = 0.2;
 
     @Builder.Default
@@ -60,7 +63,7 @@ public class User {
     private String pdfMargin = "18mm";
 
     @Builder.Default
-    private double pdfFontSize = 16.5;
+    private double pdfFontSize = 10.0;
 
     @Builder.Default
     private boolean active = true;

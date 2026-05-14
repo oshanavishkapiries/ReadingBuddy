@@ -13,7 +13,7 @@
         <div class="card dashboard-card">
             <h2>Quick Upload</h2>
             {% if not user.openrouter_api_key and has_backend_key %}
-            <div class="plan-badge">Free Plan &middot; {{ usage_count }}/3 today</div>
+            <div class="plan-badge">Free Plan &middot; {{ usage_count }}/{{ daily_limit }} today</div>
             {% endif %}
             <form action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
                 <div class="form-group">
@@ -36,18 +36,18 @@
                 <div class="plan-label">Free</div>
                 <div class="plan-limits">
                     <div class="limit-item">
-                        <span class="limit-value">3</span>
+                        <span class="limit-value">{{ daily_limit }}</span>
                         <span class="limit-desc">PDFs per day</span>
                     </div>
                     <div class="limit-item">
-                        <span class="limit-value">100</span>
+                        <span class="limit-value">{{ page_limit }}</span>
                         <span class="limit-desc">Pages per PDF</span>
                     </div>
                 </div>
                 <div class="plan-usage">
-                    <span>Today: {{ usage_count }}/3 used</span>
+                    <span>Today: {{ usage_count }}/{{ daily_limit }} used</span>
                     <div class="usage-bar">
-                        <div class="usage-fill" style="width:{{ (usage_count / 3) * 100 }}%"></div>
+                        <div class="usage-fill" style="width:{{ (usage_count / daily_limit) * 100 }}%"></div>
                     </div>
                 </div>
             </div>
@@ -113,7 +113,7 @@
                 </div>
                 <div class="info-row">
                     <span class="info-label">Storage</span>
-                    <span class="info-value">{% if uses_drive %}Google Drive{% else %}Local{% endif %}</span>
+                    <span class="info-value">Local</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Model</span>

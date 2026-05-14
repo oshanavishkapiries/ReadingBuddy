@@ -134,36 +134,48 @@ def merge_nearby_rects(rects: List[fitz.Rect], max_gap: float = 25) -> List[fitz
     return merged
 
 
+def looks_like_image(crop: Image.Image, min_variance: float = 500.0) -> bool:
+    if np is None:
+        return True
+    gray = np.array(crop.convert("L"), dtype=float)
+    return float(np.var(gray)) > min_variance
+
+
 def save_image_blocks(page: fitz.Page, page_img: Image.Image, out_dir: Path, min_area: int) -> int:
     fitz = _get_fitz()
     count = 0
     data = page.get_text("dict")
     page_area = page.rect.width * page.rect.height
     candidate_rects: List[fitz.Rect] = []
+
     for block in data.get("blocks", []):
         bbox = block.get("bbox")
         if not bbox:
             continue
-        rect = fitz.Rect(bbox)
-        area = rect.width * rect.height
-        if block.get("type") == 1:
-            candidate_rects.append(rect)
-        elif block.get("type") == 0:
-            if area > page_area * 0.025 and rect.width > page.rect.width * 0.20:
-                candidate_rects.append(rect)
+        if block.get("type") == 1:  # image blocks only; type=0 are text blocks
+            candidate_rects.append(fitz.Rect(bbox))
+
     try:
         drawings = page.get_drawings()
         for drawing in drawings:
             rect = drawing.get("rect")
-            if rect:
-                rect = fitz.Rect(rect)
-                if rect.width * rect.height > page_area * 0.001:
-                    candidate_rects.append(rect)
+            if not rect:
+                continue
+            rect = fitz.Rect(rect)
+            area = rect.width * rect.height
+            if area < page_area * 0.01:  # skip tiny decorative elements
+                continue
+            aspect = rect.width / max(rect.height, 1)
+            if aspect > 15 or aspect < 0.07:  # skip thin rules and separators
+                continue
+            candidate_rects.append(rect)
     except Exception:
         pass
+
     if not candidate_rects:
         return 0
-    merged_rects = merge_nearby_rects(candidate_rects, max_gap=35)
+
+    merged_rects = merge_nearby_rects(candidate_rects, max_gap=10)
     for rect in merged_rects:
         rect = fitz.Rect(rect)
         rect.x0 = max(page.rect.x0, rect.x0 - 12)
@@ -174,6 +186,10 @@ def save_image_blocks(page: fitz.Page, page_img: Image.Image, out_dir: Path, min
         if crop.width * crop.height < min_area:
             continue
         if crop.width > page_img.width * 0.95 and crop.height > page_img.height * 0.95:
+            continue
+        if crop.height < 50:  # skip very thin strips
+            continue
+        if not looks_like_image(crop):  # skip text-looking regions
             continue
         count += 1
         crop.save(out_dir / f"crop_{count:03d}.png")
@@ -265,8 +281,9 @@ def extract_pdf(
         best_text = choose_best_text(digital_text, ocr_text, min_text_chars)
         (page_dir / "text.txt").write_text(best_text + "\n", encoding="utf-8")
 
-        crop_count = save_image_blocks(page, page_img, image_dir, min_image_area)
         embedded_count = save_embedded_images(doc, page, image_dir, page_no)
+        # Only crop for vector diagrams when the PDF has no embedded images on this page
+        crop_count = save_image_blocks(page, page_img, image_dir, min_image_area) if embedded_count == 0 else 0
 
         manifest["page_outputs"].append({
             "page": page_no,

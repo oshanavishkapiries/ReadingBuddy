@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from webapp.config import WORKSPACE, DEFAULT_EXTRACTION, DEFAULT_TRANSLATION, DEFAULT_PDF_GENERATION, OPENROUTER_API_KEY
+from webapp.config import WORKSPACE, DEFAULT_EXTRACTION, DEFAULT_TRANSLATION, DEFAULT_PDF_GENERATION, OPENROUTER_API_KEY, DAILY_LIMIT, PAGE_LIMIT
 from webapp.database import get_db, init_db
 from webapp.models import (
     create_job, get_job, list_jobs, update_job_status,
@@ -173,6 +173,8 @@ async def dashboard(request: Request, user: User = Depends(require_user), db: Se
         "documents": documents,
         "has_backend_key": bool(OPENROUTER_API_KEY),
         "usage_count": usage_count,
+        "daily_limit": DAILY_LIMIT,
+        "page_limit": PAGE_LIMIT,
     })
 
 
@@ -184,6 +186,7 @@ async def documents_page(request: Request, user: User = Depends(require_user), d
         "user": user,
         "documents": documents,
         "usage_count": usage_count,
+        "daily_limit": DAILY_LIMIT,
         "has_backend_key": bool(OPENROUTER_API_KEY),
     })
 
@@ -226,10 +229,11 @@ async def translate_document(
     ocr_mode: str = Form("auto"),
     lang: str = Form("eng"),
     model: str = Form("openai/gpt-4o-mini"),
+    translation_language: str = Form("sinhala"),
     temperature: float = Form(0.2),
     page_size: str = Form("A4"),
     margin: str = Form("18mm"),
-    font_size: float = Form(16.5),
+    font_size: float = Form(10.0),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
@@ -241,9 +245,9 @@ async def translate_document(
 
     if not user.openrouter_api_key and OPENROUTER_API_KEY:
         usage_count, _ = get_today_usage(db, user.id)
-        if usage_count >= 3:
+        if usage_count >= DAILY_LIMIT:
             response = RedirectResponse(url="/documents", status_code=303)
-            response.set_cookie(key="rb_notify", value="warning|Daily limit reached (3/3). Add your own API key for unlimited access.|6000", max_age=5, path="/")
+            response.set_cookie(key="rb_notify", value="warning|Daily limit reached. Add your own API key for unlimited access.|6000", max_age=5, path="/")
             return response
 
     doc = get_document(db, doc_id, user.id)
@@ -275,6 +279,27 @@ async def translate_document(
         "_user_id": user.id,
     }
 
+    settings = {
+        "extraction": {
+            "dpi": dpi,
+            "ocr_mode": ocr_mode,
+            "lang": lang,
+            "save_page_render": True,
+        },
+        "translation": {
+            "model": model,
+            "language": translation_language,
+            "temperature": temperature,
+            "api_key": api_key,
+        },
+        "pdf_generation": {
+            "page_size": page_size,
+            "margin": margin,
+            "font_size": font_size,
+        },
+        "_user_id": user.id,
+    }
+
     job = create_job(db, user_id=user.id, filename=doc.original_name, settings=settings, document_id=doc.id)
     if not user.openrouter_api_key:
         log_usage(db, user.id, job.id, 0)
@@ -290,10 +315,11 @@ async def upload_pdf(
     ocr_mode: str = Form("auto"),
     lang: str = Form("eng"),
     model: str = Form("openai/gpt-4o-mini"),
+    translation_language: str = Form("sinhala"),
     temperature: float = Form(0.2),
     page_size: str = Form("A4"),
     margin: str = Form("18mm"),
-    font_size: float = Form(16.5),
+    font_size: float = Form(10.0),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
@@ -305,9 +331,9 @@ async def upload_pdf(
 
     if not user.openrouter_api_key and OPENROUTER_API_KEY:
         usage_count, _ = get_today_usage(db, user.id)
-        if usage_count >= 3:
+        if usage_count >= DAILY_LIMIT:
             response = RedirectResponse(url="/dashboard", status_code=303)
-            response.set_cookie(key="rb_notify", value="warning|Daily limit reached (3/3). Add your own API key for unlimited access.|6000", max_age=5, path="/")
+            response.set_cookie(key="rb_notify", value="warning|Daily limit reached. Add your own API key for unlimited access.|6000", max_age=5, path="/")
             return response
 
     content = await file.read()
@@ -330,6 +356,7 @@ async def upload_pdf(
         },
         "translation": {
             "model": model,
+            "language": translation_language,
             "temperature": temperature,
             "api_key": api_key,
         },
@@ -521,10 +548,11 @@ async def update_settings(
     extraction_dpi: int = Form(300),
     extraction_ocr_mode: str = Form("auto"),
     extraction_lang: str = Form("eng"),
+    translation_language: str = Form("sinhala"),
     translation_temperature: float = Form(0.2),
     pdf_page_size: str = Form("A4"),
     pdf_margin: str = Form("18mm"),
-    pdf_font_size: float = Form(16.5),
+    pdf_font_size: float = Form(10.0),
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
@@ -534,6 +562,7 @@ async def update_settings(
         "extraction_dpi": extraction_dpi,
         "extraction_ocr_mode": extraction_ocr_mode,
         "extraction_lang": extraction_lang,
+        "translation_language": translation_language,
         "translation_temperature": translation_temperature,
         "pdf_page_size": pdf_page_size,
         "pdf_margin": pdf_margin,

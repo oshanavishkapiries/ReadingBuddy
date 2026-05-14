@@ -12,7 +12,9 @@ WORKSPACE.mkdir(parents=True, exist_ok=True)
 DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{BASE_DIR.parent / 'readingbuddy.db'}")
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
-OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini")
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.5-flash")
+DAILY_LIMIT = int(os.environ.get("DAILY_LIMIT", 100))
+PAGE_LIMIT = int(os.environ.get("PAGE_LIMIT", 50))
 
 DEFAULT_EXTRACTION = {
     "dpi": 300,
@@ -36,5 +38,6 @@ DEFAULT_TRANSLATION = {
 DEFAULT_PDF_GENERATION = {
     "page_size": "A4",
     "margin": "18mm",
+    "font_size": 10.0,
     "font_file": str(BASE_DIR.parent / "poc" / "NotoSansSinhala-Regular.ttf"),
 }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -11,21 +12,36 @@ from urllib.request import Request, urlopen
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-DEFAULT_SYSTEM_PROMPT = """You are a careful Sinhala technical-document translator and Markdown formatter.
+SUPPORTED_LANGUAGES = {
+    "sinhala":  "Sinhala",
+    "tamil":    "Tamil",
+    "hindi":    "Hindi",
+    "chinese":  "Chinese (Simplified)",
+    "japanese": "Japanese",
+    "korean":   "Korean",
+    "arabic":   "Arabic",
+}
 
-Audience:
-Sri Lankan software engineers who understand English technical terms but need the document context explained clearly in casual, natural Sinhala.
+DEFAULT_LANGUAGE = "sinhala"
+
+
+def build_system_prompt(language: str = DEFAULT_LANGUAGE) -> str:
+    lang_name = SUPPORTED_LANGUAGES.get(language.lower(), "Sinhala")
+    return f"""You are a careful {lang_name} technical-document translator and Markdown formatter.
 
 Your job:
-Convert OCR/PDF extracted English page text into Sinhala Markdown that is easy to understand, technically accurate, and faithful to the original.
+Convert OCR/PDF extracted English page text into {lang_name} Markdown that is easy to understand, technically accurate, and faithful to the original.
 
 Translation style:
-- Use casual, natural Sinhala.
-- Do NOT use overly formal Sinhala.
-- Do NOT translate common software/engineering technical terms.
-- Keep technical terms in English exactly where they are commonly used by software engineers.
-- Translate explanations, descriptions, instructions, and surrounding context into Sinhala.
-- Preserve the original meaning. Do not summarize. Do not invent missing content.
+- Use natural, conversational {lang_name} — the way an educated native speaker would actually say it out loud.
+- Translate based on language context: ask yourself "would a native {lang_name} speaker say this word in English in everyday speech?" If yes, keep the English word. If no, translate it.
+- Do NOT translate English words that native {lang_name} speakers have adopted as everyday loanwords and use in normal speech.
+  Examples (keep these in English): car, bus, van, train, phone, mobile, camera, computer, table, chair, office, school, class, teacher, book, pen, bag, shop, market, bank, hospital, doctor, nurse, film, music, song, game, match, team, park, hotel, ticket, bill, tax, form, report, meeting, project, plan, map.
+  The rule: if a {lang_name} speaker would say the English word naturally in a sentence, do not replace it with a formal or archaic {lang_name} equivalent.
+- Do NOT translate software and engineering technical terms. Keep them in English exactly as written.
+- Translate all explanations, instructions, descriptions, and conceptual content into natural {lang_name}.
+- Never use a formal or archaic {lang_name} word if the English loanword is the one people actually use in speech.
+- Preserve the original meaning exactly. Do not summarize. Do not skip content. Do not invent missing content.
 - Correct only obvious OCR mistakes while translating.
 
 Formatting:
@@ -33,10 +49,12 @@ Formatting:
 - Return only valid Markdown content.
 """
 
+
 USER_PROMPT_TEMPLATE = """You are processing one extracted PDF page.
 
 Page folder name: {page_name}
 Page number: {page_number}
+Target language: {lang_name}
 
 Available image relative paths for this page:
 {image_list}
@@ -46,33 +64,24 @@ English extracted text from text.txt:
 {text}
 --- END TEXT ---
 
-Create Sinhala Markdown for this page.
-
-Required output structure:
-# පිටුව {page_number_padded}
-
-<Translate the page content into casual Sinhala while preserving software/technical terms in English.>
+Translate the page content into {lang_name} while preserving software/technical terms in English.
 
 If images are relevant to a section, insert the Markdown image link near that section.
-If relevance is unclear, place all images at the end under:
-## රූප
+If relevance is unclear, place all images at the end under a heading in {lang_name}.
 
 Image link format must use the exact relative paths provided, for example:
-![රූපය 1]({example_image_path})
+![image]({example_image_path})
 
 Important translation rules:
-- Output Sinhala Markdown only.
+- Output {lang_name} Markdown only.
 - Do not wrap the answer in code fences.
 - Do not mention that you are an AI.
 - Do not skip content.
 - Do not summarize.
-- Use casual Sri Lankan Sinhala.
 - Keep software engineering terms in English.
 - Do NOT translate words like: API, database, server, client, frontend, backend, framework, library, package, module, component, deployment, pipeline, repository, branch, commit, pull request, issue, bug, feature, release, environment, variable, function, class, object, method, interface, endpoint, request, response, payload, authentication, authorization, token, cache, queue, event, service, microservice, container, Docker, Kubernetes, cloud, AWS, Azure, GCP, Linux, command, terminal, script, build, test, debug, log, error, exception, config, JSON, YAML, XML, HTML, CSS, JavaScript, TypeScript, Python, Java, SQL, NoSQL, Git, GitHub.
 - Keep product names, tool names, file names, folder paths, commands, code, URLs, and UI labels exactly as they are.
-- If an English technical term needs clarification, add a short casual Sinhala explanation after it.
-  Example: API කියන්නේ system දෙකක් අතර data හුවමාරු කරන්න තියෙන interface එක.
-- If text is empty, still create a useful page Markdown file with the page title and images.
+- If text is empty, still create a useful page Markdown file with any available images.
 """
 
 
@@ -177,6 +186,82 @@ def call_openrouter(
     raise RuntimeError(f"OpenRouter request failed after {retries} attempt(s): {last_error}")
 
 
+IMAGE_RELEVANCE_THRESHOLD = 8  # keep images scoring >= this value (1–10 scale)
+
+_RELEVANCE_PROMPT = """\
+Score this image on how relevant it is to educational/learning content on a scale of 1 to 10.
+
+Scoring guide:
+10 — Core learning material: technical diagram, architecture diagram, flowchart, algorithm illustration,
+     code snippet, data table, scientific figure, mathematical graph, circuit schematic, UML diagram.
+7–9 — Supporting content: annotated screenshot, step-by-step UI walkthrough, labelled photo,
+      comparison table, process overview.
+4–6 — Marginally relevant: generic stock photo loosely related to the topic, simple decorative
+      border that also contains text, section divider with some informational value.
+1–3 — Not learning content: logo, brand mark, watermark, social media icon, advertisement,
+      header/footer decoration, background pattern, publisher colophon.
+
+Reply with a single integer between 1 and 10. Nothing else."""
+
+
+def score_image_relevance(image_path: Path, api_key: str, model: str) -> int:
+    """Return a 1–10 educational relevance score for the image via LLM vision.
+    Returns IMAGE_RELEVANCE_THRESHOLD (pass) on any error so images are kept (fail-open)."""
+    try:
+        raw = image_path.read_bytes()
+        b64 = base64.b64encode(raw).decode("ascii")
+        suffix = image_path.suffix.lower().lstrip(".")
+        mime = "image/png" if suffix == "png" else f"image/{suffix}"
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{mime};base64,{b64}"},
+                        },
+                        {"type": "text", "text": _RELEVANCE_PROMPT},
+                    ],
+                }
+            ],
+            "temperature": 0,
+            "max_tokens": 3,
+        }
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        data = json.dumps(payload).encode("utf-8")
+        req = Request(OPENROUTER_URL, data=data, headers=headers, method="POST")
+        with urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+            answer = (result.get("choices") or [{}])[0].get("message", {}).get("content", "")
+            if isinstance(answer, list):
+                answer = " ".join(str(p.get("text", p)) for p in answer)
+            match = re.search(r"\d+", answer.strip())
+            if match:
+                return max(1, min(10, int(match.group())))
+    except Exception:
+        pass
+    return IMAGE_RELEVANCE_THRESHOLD  # fail-open
+
+
+def filter_images(images: List[str], base_dir: Path, api_key: str, model: str) -> List[str]:
+    """Keep only images whose educational relevance score meets the threshold."""
+    kept = []
+    for rel_path in images:
+        abs_path = base_dir / rel_path
+        if not abs_path.exists():
+            kept.append(rel_path)
+            continue
+        score = score_image_relevance(abs_path, api_key, model)
+        if score >= IMAGE_RELEVANCE_THRESHOLD:
+            kept.append(rel_path)
+    return kept
+
+
 def clean_markdown(md: str) -> str:
     md = md.strip()
     if md.startswith("```"):
@@ -192,17 +277,27 @@ def page_number_from_name(page_name: str, fallback: int) -> int:
     return fallback
 
 
-def build_user_prompt(page_dir: Path, base_dir: Path, index: int) -> Tuple[str, int, List[str]]:
+def build_user_prompt(
+    page_dir: Path,
+    base_dir: Path,
+    index: int,
+    language: str = DEFAULT_LANGUAGE,
+    api_key: Optional[str] = None,
+    model: Optional[str] = None,
+    filter_decorative: bool = True,
+) -> Tuple[str, int, List[str]]:
     text = read_text_file(page_dir)
     images = find_images(page_dir, base_dir)
+    if filter_decorative and api_key and model and images:
+        images = filter_images(images, base_dir, api_key, model)
     page_number = page_number_from_name(page_dir.name, index)
-    padded = f"{page_number:03d}"
     image_list = "\n".join(f"- {img}" for img in images) if images else "- No images found for this page."
     example_path = images[0] if images else f"{page_dir.name}/images/crop_001.png"
+    lang_name = SUPPORTED_LANGUAGES.get(language.lower(), "Sinhala")
     user_prompt = USER_PROMPT_TEMPLATE.format(
         page_name=page_dir.name,
         page_number=page_number,
-        page_number_padded=padded,
+        lang_name=lang_name,
         image_list=image_list,
         text=text,
         example_image_path=example_path,
@@ -213,20 +308,18 @@ def build_user_prompt(page_dir: Path, base_dir: Path, index: int) -> Tuple[str, 
 def fallback_markdown(page_dir: Path, base_dir: Path, index: int) -> str:
     text = read_text_file(page_dir)
     images = find_images(page_dir, base_dir)
-    page_number = page_number_from_name(page_dir.name, index)
-    padded = f"{page_number:03d}"
-    lines = [f"# පිටුව {padded}", ""]
+    lines = []
     if text:
         lines.extend([
-            "> OpenRouter translation failed. පහත දැක්වෙන්නේ original extracted text එකයි.",
+            "> Translation failed. Original extracted text below.",
             "",
             text,
             "",
         ])
     if images:
-        lines.extend(["## රූප", ""])
+        lines.extend(["## Images", ""])
         for i, img in enumerate(images, start=1):
-            lines.append(f"![රූපය {i}]({img})")
+            lines.append(f"![image {i}]({img})")
     return "\n".join(lines).strip() + "\n"
 
 
@@ -235,12 +328,12 @@ def translate_to_sinhala(
     output_dir: str,
     api_key: str,
     model: str = "openai/gpt-4o-mini",
+    language: str = DEFAULT_LANGUAGE,
     temperature: float = 0.2,
     max_tokens: int = 0,
     retries: int = 3,
     timeout: int = 120,
     continue_on_error: bool = True,
-    system_prompt: str = DEFAULT_SYSTEM_PROMPT,
     progress_callback: Callable[[float, str, str], None] | None = None,
 ) -> int:
     input_path = Path(input_dir).resolve()
@@ -258,13 +351,16 @@ def translate_to_sinhala(
         page_number = page_number_from_name(page_dir.name, idx)
         out_file = output_path / f"page_{page_number:03d}.md"
 
-        user_prompt, _, images = build_user_prompt(page_dir, input_path, idx)
+        user_prompt, _, images = build_user_prompt(
+            page_dir, input_path, idx, language,
+            api_key=api_key, model=model, filter_decorative=True,
+        )
 
         try:
             md = call_openrouter(
                 api_key=api_key,
                 model=model,
-                system_prompt=system_prompt,
+                system_prompt=build_system_prompt(language),
                 user_prompt=user_prompt,
                 temperature=temperature,
                 max_tokens=max_tokens if max_tokens > 0 else None,
@@ -282,8 +378,9 @@ def translate_to_sinhala(
 
         progress = (processed / total) * 100
         detail = f"Page {processed}/{total}: {page_dir.name}"
+        lang_name = SUPPORTED_LANGUAGES.get(language.lower(), "Sinhala")
         if progress_callback:
-            progress_callback(progress, "Translating to Sinhala", detail)
+            progress_callback(progress, f"Translating to {lang_name}", detail)
 
     combined_parts = []
     for md_file in sorted(output_path.glob("page_*.md"), key=natural_page_key):
