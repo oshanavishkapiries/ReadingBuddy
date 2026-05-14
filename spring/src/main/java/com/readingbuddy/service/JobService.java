@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-// Python equivalent: tasks.py — start_job(), run_pipeline(), active_jobs dict
 @Service
 public class JobService {
 
@@ -29,8 +28,6 @@ public class JobService {
     @Value("${app.openrouter-api-key:}")
     private String backendApiKey;
 
-    // In-memory progress cache — same purpose as active_jobs dict in Python tasks.py.
-    // ConcurrentHashMap is thread-safe without a manual lock (replaces Python's threading.Lock).
     private final Map<String, Map<String, Object>> activeJobs = new ConcurrentHashMap<>();
 
     public List<Job> listJobs(String userId, int limit) {
@@ -97,14 +94,10 @@ public class JobService {
         });
     }
 
-    // Returns live progress from the in-memory map, or null if the job is not running.
-    // Controllers fall back to the DB-persisted values when this returns null.
     public Map<String, Object> getLiveStatus(String jobId) {
         return activeJobs.get(jobId);
     }
 
-    // @Async dispatches this method to the ThreadPoolTaskExecutor defined in AppConfig.
-    // Python equivalent: threading.Thread(target=run_pipeline, ...).start()
     @Async("taskExecutor")
     public void startPipeline(String jobId, Path pdfPath, Map<String, Object> settings) {
         activeJobs.put(jobId, new ConcurrentHashMap<>(Map.of(

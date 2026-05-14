@@ -8,8 +8,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-// Python equivalent: class Job(Base) in models.py
-// The settings field stores translation/extraction/pdf parameters as a JSON string.
 @Entity
 @Table(name = "jobs")
 @Getter
@@ -53,7 +51,6 @@ public class Job {
     @Builder.Default
     private String error = "";
 
-    // @Convert applies JsonMapConverter so the Map is stored as TEXT in the DB
     @Column(columnDefinition = "TEXT")
     @Convert(converter = JsonMapConverter.class)
     @Builder.Default

@@ -11,10 +11,6 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
-// Python equivalent: run_pipeline() in tasks.py
-//
-// Orchestrates the three pipeline stages: Extract → Translate → Generate PDF.
-// Called from JobService.startPipeline() which is @Async — so this runs in a background thread.
 @Component
 public class PipelineRunner {
 
@@ -29,7 +25,6 @@ public class PipelineRunner {
     @Value("${app.openrouter-api-key:}")
     private String backendApiKey;
 
-    @SuppressWarnings("unchecked")
     public void run(String jobId, Path pdfPath, Map<String, Object> settings, JobService jobService) {
         try {
             Map<String, Object> extSettings   = (Map<String, Object>) settings.getOrDefault("extraction",   Map.of());
@@ -51,7 +46,6 @@ public class PipelineRunner {
             Files.createDirectories(jobWorkspace);
             Path outputPdf = jobWorkspace.resolve("final.pdf");
 
-            // Stage 1: Extract text and render pages
             jobService.updateProgress(jobId, 5, "Extracting PDF", "Starting extraction...");
             List<PageData> pages = extractor.extract(pdfPath, dpi,
                     (pct, msg) -> jobService.updateProgress(jobId, 5 + pct * 0.35, "Extracting PDF", msg));
@@ -61,19 +55,16 @@ public class PipelineRunner {
                         "PDF has " + pages.size() + " pages. Free plan limit is 100 pages.");
             }
 
-            // Stage 2: Translate each page via OpenRouter
             jobService.updateProgress(jobId, 40, "Translating", "Sending pages to OpenRouter...");
             translator.translate(pages, apiKey, model, temperature,
                     (pct, msg) -> jobService.updateProgress(jobId, 40 + pct * 0.45, "Translating", msg));
 
-            // Stage 3: Build the output PDF
             jobService.updateProgress(jobId, 85, "Generating PDF", "Writing pages...");
 
             Path fontPath = Path.of("poc", "NotoSansSinhala-Regular.ttf");
             generator.generate(pages, outputPdf, fontPath, fontSize, pageSize,
                     (pct, msg) -> jobService.updateProgress(jobId, 85 + pct * 0.14, "Generating PDF", msg));
 
-            // Update usage log with the actual page count
             String userId = (String) settings.get("_user_id");
             if (userId != null) {
                 usageService.updatePageCount(jobId, pages.size());

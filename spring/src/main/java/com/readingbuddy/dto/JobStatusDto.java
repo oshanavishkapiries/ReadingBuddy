@@ -3,8 +3,6 @@ package com.readingbuddy.dto;
 import lombok.Builder;
 import lombok.Data;
 
-// JSON response body for GET /job/{id}/status — polled by the job-detail page.
-// Python equivalent: the dict returned by GET /job/{job_id}/status in main.py
 @Data
 @Builder
 public class JobStatusDto {

@@ -8,9 +8,6 @@ import jakarta.persistence.Converter;
 import java.util.HashMap;
 import java.util.Map;
 
-// JPA AttributeConverter serialises the Job.settings Map to/from a JSON string in the database.
-// Python equivalent: SQLAlchemy's Column(JSON) — which stores dicts as JSON natively.
-// H2 does not have a native JSON column type, so we store it as TEXT and convert manually.
 @Converter
 public class JsonMapConverter implements AttributeConverter<Map<String, Object>, String> {
 

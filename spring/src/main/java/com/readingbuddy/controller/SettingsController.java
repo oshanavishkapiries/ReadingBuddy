@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-// Python equivalent: GET/POST /settings in main.py
 @Controller
 public class SettingsController extends BaseController {
 

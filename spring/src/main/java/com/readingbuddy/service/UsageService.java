@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.List;
 
-// Python equivalent: get_today_usage / log_usage in models.py
 @Service
 public class UsageService {
 
@@ -51,6 +50,6 @@ public class UsageService {
     }
 
     private String today() {
-        return LocalDate.now().toString();   // YYYY-MM-DD, same format as Python
+        return LocalDate.now().toString();
     }
 }

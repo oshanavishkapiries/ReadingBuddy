@@ -15,8 +15,6 @@ import org.springframework.web.bind.annotation.*;
 import java.nio.file.Path;
 import java.util.Optional;
 
-// Python equivalent: /shared/* and /explore routes in main.py
-// All routes are public — no authentication required
 @Controller
 public class SharedController {
 
@@ -35,7 +33,6 @@ public class SharedController {
     public ResponseEntity<FileSystemResource> downloadShared(@PathVariable String sharedId) {
         return sharedDocumentService.findById(sharedId).flatMap(shared -> {
             if (shared.getDirectLink() != null && !shared.getDirectLink().isBlank()) {
-                // redirect is handled below
                 return Optional.empty();
             }
             var job = shared.getJob();

@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 
-// Python equivalent: create_shared_document / get_shared_by_job / like_shared_document in models.py
 @Service
 public class SharedDocumentService {
 

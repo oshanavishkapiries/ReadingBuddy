@@ -17,16 +17,10 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 @Configuration
 public class AppConfig implements WebMvcConfigurer {
 
-    // @Lazy prevents a circular-dependency issue: AppConfig (WebMvcConfigurer) is
-    // initialised early in the context lifecycle, before JPA repositories are ready.
-    // Deferring SecurityUtils to first-use avoids that ordering problem.
     @Autowired
     @Lazy
     private SecurityUtils securityUtils;
 
-    // ThreadPoolTaskExecutor powers @Async methods in JobService.
-    // Python equivalent: every start_job() spawns a new daemon thread.
-    // Spring consolidates all async work into one managed pool.
     @Bean(name = "taskExecutor")
     public ThreadPoolTaskExecutor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -38,9 +32,6 @@ public class AppConfig implements WebMvcConfigurer {
         return executor;
     }
 
-    // This interceptor adds two things to every Thymeleaf model:
-    //   currentUser  — the logged-in User entity (like Jinja2's template context in Python)
-    //   notification — parsed rb_notify cookie, cleared after first render
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new HandlerInterceptor() {

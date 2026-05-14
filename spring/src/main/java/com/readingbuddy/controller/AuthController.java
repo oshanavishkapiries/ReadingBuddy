@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-// Python equivalent: login / register / logout routes in main.py
 @Controller
 public class AuthController extends BaseController {
 
@@ -29,7 +28,7 @@ public class AuthController extends BaseController {
     public String loginPage(@RequestParam(required = false) String error, Model model) {
         if (securityUtils.getCurrentUser() != null) return "redirect:/dashboard";
         model.addAttribute("error", error);
-        return "login";   // → templates/login.html
+        return "login";
     }
 
     @PostMapping("/login")
@@ -48,7 +47,7 @@ public class AuthController extends BaseController {
     public String registerPage(@RequestParam(required = false) String error, Model model) {
         if (securityUtils.getCurrentUser() != null) return "redirect:/dashboard";
         model.addAttribute("error", error);
-        return "register";   // → templates/register.html
+        return "register";
     }
 
     @PostMapping("/register")

@@ -15,9 +15,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-// Python equivalent: get_current_user dependency in auth.py which reads the rb_session cookie.
-// Instead of injecting into every route via Depends(), this filter runs once per request
-// and populates SecurityContextHolder so any controller can call securityUtils.getCurrentUser().
 @Component
 public class JwtCookieFilter extends OncePerRequestFilter {
 

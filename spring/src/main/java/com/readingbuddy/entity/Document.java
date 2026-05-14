@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-// Python equivalent: class Document(Base) in models.py
 @Entity
 @Table(name = "documents")
 @Getter
@@ -23,7 +22,6 @@ public class Document {
     @Id
     private String id;
 
-    // @ManyToOne + @JoinColumn replaces SQLAlchemy's ForeignKey("users.id") + relationship("User")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

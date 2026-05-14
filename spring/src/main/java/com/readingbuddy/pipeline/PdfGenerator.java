@@ -19,13 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-// Python equivalent: pdf_generator.py (generate_pdf using weasyprint / chromium)
-//
-// Key differences:
-//   - Python uses weasyprint / chromium to render Markdown → PDF via HTML/CSS
-//   - Java uses Apache PDFBox to build the PDF directly with a content stream
-//   - PDType0Font.load() supports Unicode fonts (Noto Sans Sinhala) for Sinhala script
-//   - Word wrapping is handled manually because PDFBox does not do it automatically
 @Component
 public class PdfGenerator {
 
@@ -41,8 +34,6 @@ public class PdfGenerator {
 
         try (PDDocument doc = new PDDocument()) {
 
-            // Try to load the custom font (NotoSansSinhala) — falls back to Helvetica if missing.
-            // PDType0Font supports Unicode / complex scripts; PDType1Font is Latin-only.
             PDFont font = loadFont(doc, fontPath);
 
             int total = pages.size();
@@ -67,7 +58,6 @@ public class PdfGenerator {
                     stream.beginText();
                     stream.newLineAtOffset(MARGIN, startY);
 
-                    // Manual word wrap — needed because PDFBox showText() has no built-in wrapping
                     for (String line : wrapText(text, font, fontSize, width)) {
                         stream.showText(line);
                         stream.newLine();
@@ -88,8 +78,6 @@ public class PdfGenerator {
     private PDFont loadFont(PDDocument doc, Path fontPath) {
         if (fontPath != null && fontPath.toFile().exists()) {
             try (FileInputStream in = new FileInputStream(fontPath.toFile())) {
-                // true = embed the full font subset so Sinhala glyphs render on any viewer
-                // PDFBox 3.x removed the File overload — must use InputStream
                 return PDType0Font.load(doc, in, true);
             } catch (IOException e) {
                 System.err.println("Could not load custom font, falling back: " + e.getMessage());
@@ -98,8 +86,6 @@ public class PdfGenerator {
         return new PDType1Font(Standard14Fonts.FontName.HELVETICA);
     }
 
-    // Splits text into lines that fit within maxWidth points.
-    // PDFBox's getStringWidth() returns width in 1/1000 text-space units, so divide by 1000 * fontSize.
     private List<String> wrapText(String text, PDFont font, float fontSize, float maxWidth)
             throws IOException {
 

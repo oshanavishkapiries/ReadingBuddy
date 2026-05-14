@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-// Python equivalent: upload logic in main.py (/documents/upload and /upload routes)
 @Service
 public class DocumentService {
 
@@ -34,8 +33,6 @@ public class DocumentService {
         return documentRepository.findByIdAndUserId(docId, userId);
     }
 
-    // Saves the uploaded file either to Google Drive or the local workspace.
-    // Returns the saved Document entity.
     public Document uploadDocument(MultipartFile file, User user) throws IOException {
         byte[] content = file.getBytes();
         String ext = getExtension(file.getOriginalFilename());
@@ -74,7 +71,6 @@ public class DocumentService {
         });
     }
 
-    // Resolves the local filesystem path for a document, downloading from Drive if needed.
     public Path resolveLocalPath(Document doc, User user) throws IOException {
         if (driveService.isEnabled() && doc.getDriveFileId() != null && !doc.getDriveFileId().isEmpty()) {
             Path tmp = Path.of(workspace, "temp");

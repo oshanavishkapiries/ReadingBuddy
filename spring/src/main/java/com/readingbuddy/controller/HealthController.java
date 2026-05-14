@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-// Python equivalent: GET /health in main.py
 @RestController
 public class HealthController {
 

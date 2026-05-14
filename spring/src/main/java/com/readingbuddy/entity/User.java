@@ -8,10 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-// Python equivalent: class User(Base) in models.py
-// JPA @Entity maps this class to the "users" table.
-// Lombok @Getter/@Setter replace Python's SQLAlchemy Column attribute access.
-// @PrePersist / @PreUpdate replace SQLAlchemy's default= and onupdate= arguments.
 @Entity
 @Table(name = "users")
 @Getter
@@ -68,7 +64,6 @@ public class User {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // cascade = ALL + orphanRemoval mirrors SQLAlchemy's cascade="all, delete-orphan"
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Job> jobs = new ArrayList<>();

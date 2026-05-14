@@ -22,7 +22,6 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.Optional;
 
-// Python equivalent: /job/* and /jobs routes in main.py
 @Controller
 public class JobController extends BaseController {
 
@@ -50,8 +49,6 @@ public class JobController extends BaseController {
         }).orElse("redirect:/jobs");
     }
 
-    // JSON polling endpoint — called every few seconds by the job-detail page JS
-    // Python equivalent: GET /job/{job_id}/status returning a dict
     @GetMapping("/job/{jobId}/status")
     @ResponseBody
     public ResponseEntity<JobStatusDto> jobStatus(@PathVariable String jobId) {
@@ -72,7 +69,6 @@ public class JobController extends BaseController {
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Streams the translated PDF back to the browser
     @GetMapping("/job/{jobId}/download")
     public ResponseEntity<FileSystemResource> downloadPdf(@PathVariable String jobId) {
         User user = securityUtils.requireCurrentUser();
@@ -88,7 +84,6 @@ public class JobController extends BaseController {
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Streams the combined markdown file
     @GetMapping("/job/{jobId}/download/markdown")
     public ResponseEntity<FileSystemResource> downloadMarkdown(@PathVariable String jobId) {
         User user = securityUtils.requireCurrentUser();

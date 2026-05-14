@@ -13,12 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-// Python equivalent: translator.py (translate_to_sinhala)
-//
-// Key differences:
-//   - java.net.http.HttpClient (standard since Java 11) replaces Python's requests / httpx
-//   - Jackson ObjectMapper replaces Python's json module for building / parsing JSON
-//   - No retry loop here for brevity — the Python version retries up to 3 times
 @Component
 public class Translator {
 
@@ -61,7 +55,6 @@ public class Translator {
     private String callOpenRouter(String text, String apiKey, String model,
                                   double temperature) throws Exception {
 
-        // Build the JSON request body using Jackson — replaces Python dict + json.dumps()
         String body = mapper.writeValueAsString(Map.of(
                 "model", model,
                 "temperature", temperature,
@@ -86,7 +79,6 @@ public class Translator {
                     + " — " + response.body());
         }
 
-        // Parse: response.choices[0].message.content
         JsonNode root = mapper.readTree(response.body());
         return root.path("choices").path(0).path("message").path("content").asText();
     }

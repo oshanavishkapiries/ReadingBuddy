@@ -19,7 +19,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-// Python equivalent: /documents/* and /upload routes in main.py
 @Controller
 public class DocumentController extends BaseController {
 
@@ -56,7 +55,6 @@ public class DocumentController extends BaseController {
         return redirectWithNotify(response, "/documents", "success", "Document deleted");
     }
 
-    // Starts a translation job from a saved document
     @PostMapping("/documents/{docId}/translate")
     public String translateDocument(@PathVariable String docId,
                                     @RequestParam(defaultValue = "300") int dpi,
@@ -96,7 +94,6 @@ public class DocumentController extends BaseController {
         return "redirect:/job/" + job.getId();
     }
 
-    // Combined upload+translate in one step (from the dashboard quick-upload form)
     @PostMapping("/upload")
     public String uploadAndTranslate(@RequestParam("file") MultipartFile file,
                                      @RequestParam(defaultValue = "300") int dpi,

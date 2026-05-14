@@ -6,7 +6,6 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-// Python equivalent: class SharedDocument(Base) in models.py
 @Entity
 @Table(name = "shared_documents")
 @Getter
@@ -21,7 +20,6 @@ public class SharedDocument {
     @Id
     private String id;
 
-    // unique = true mirrors SQLAlchemy's unique=True on job_id
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_id", unique = true, nullable = false)
     private Job job;

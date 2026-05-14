@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 import java.util.List;
 
-// Python equivalent: GET /dashboard in main.py
 @Controller
 public class DashboardController extends BaseController {
 
@@ -45,6 +44,6 @@ public class DashboardController extends BaseController {
         model.addAttribute("hasBackendKey", !backendApiKey.isBlank());
         model.addAttribute("usageCount", usageCount);
 
-        return "dashboard";   // → templates/dashboard.html
+        return "dashboard";
     }
 }
