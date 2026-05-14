@@ -25,7 +25,6 @@ from webapp.auth import (
     hash_password, verify_password, set_auth_cookie, clear_auth_cookie,
     require_user, optional_user, User,
 )
-from webapp.gdrive import get_drive_manager, DriveManager
 
 app = FastAPI(title="ReadingBuddy")
 
@@ -62,34 +61,15 @@ class NotifyMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(NotifyMiddleware)
 
-drive: DriveManager | None = None
-
 
 @app.on_event("startup")
 def startup():
-    global drive
     init_db()
     from webapp.config import OPENROUTER_API_KEY
     if OPENROUTER_API_KEY:
         print(f"Backend OpenRouter API key loaded (key: ...{OPENROUTER_API_KEY[-4:]})")
     else:
         print("WARNING: No backend OpenRouter API key found in environment")
-    try:
-        drive = get_drive_manager()
-        if drive:
-            drive.initialize()
-            print("Google Drive connected successfully")
-    except Exception as e:
-        print(f"Google Drive disabled: {e}")
-        drive = None
-
-
-def _save_upload_to_drive(file: UploadFile, parent_id: str) -> tuple[str, int, str]:
-    content = file.file.read()
-    ext = Path(file.filename).suffix if file.filename else ".pdf"
-    saved_name = f"{uuid.uuid4().hex}{ext}"
-    result = drive.upload_bytes(content, saved_name, parent_id, mime_type="application/pdf")
-    return saved_name, len(content), result["id"]
 
 
 def _save_local_file(content: bytes, filename: str, base_dir: Path) -> str:
@@ -192,7 +172,6 @@ async def dashboard(request: Request, user: User = Depends(require_user), db: Se
         "all_jobs": jobs,
         "documents": documents,
         "has_backend_key": bool(OPENROUTER_API_KEY),
-        "uses_drive": drive is not None,
         "usage_count": usage_count,
     })
 
@@ -215,33 +194,14 @@ async def upload_document(
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
-    if drive:
-        try:
-            parent_id = drive.get_user_folder(user.id, "uploads")
-            saved_name, file_size, drive_id = _save_upload_to_drive(file, parent_id)
-            create_document(db, user_id=user.id, filename=saved_name, original_name=file.filename, file_size=file_size, drive_file_id=drive_id)
-        except Exception as e:
-            if "storageQuotaExceeded" in str(e) or "Service Accounts do not have storage quota" in str(e):
-                file.file.seek(0)
-                upload_dir = WORKSPACE / "users" / user.id / "documents"
-                upload_dir.mkdir(parents=True, exist_ok=True)
-                ext = Path(file.filename).suffix or ".pdf"
-                saved_name = f"{uuid.uuid4().hex}{ext}"
-                saved_path = upload_dir / saved_name
-                content = await file.read()
-                saved_path.write_bytes(content)
-                create_document(db, user_id=user.id, filename=saved_name, original_name=file.filename, file_size=len(content))
-            else:
-                raise
-    else:
-        upload_dir = WORKSPACE / "users" / user.id / "documents"
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        ext = Path(file.filename).suffix or ".pdf"
-        saved_name = f"{uuid.uuid4().hex}{ext}"
-        saved_path = upload_dir / saved_name
-        content = await file.read()
-        saved_path.write_bytes(content)
-        create_document(db, user_id=user.id, filename=saved_name, original_name=file.filename, file_size=len(content))
+    upload_dir = WORKSPACE / "users" / user.id / "documents"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    ext = Path(file.filename).suffix or ".pdf"
+    saved_name = f"{uuid.uuid4().hex}{ext}"
+    saved_path = upload_dir / saved_name
+    content = await file.read()
+    saved_path.write_bytes(content)
+    create_document(db, user_id=user.id, filename=saved_name, original_name=file.filename, file_size=len(content))
     response = RedirectResponse(url="/documents", status_code=303)
     response.set_cookie(key="rb_notify", value="success|Document uploaded successfully|3000", max_age=5, path="/")
     return response
@@ -253,9 +213,6 @@ async def delete_user_document(
     user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
-    doc = get_document(db, doc_id, user.id)
-    if doc and drive and doc.drive_file_id:
-        drive.delete_file(doc.drive_file_id)
     delete_document(db, doc_id, user.id)
     response = RedirectResponse(url="/documents", status_code=303)
     response.set_cookie(key="rb_notify", value="success|Document deleted|3000", max_age=5, path="/")
@@ -293,14 +250,10 @@ async def translate_document(
     if not doc:
         return RedirectResponse(url="/documents", status_code=303)
 
-    local_path = ""
-    if drive and doc.drive_file_id:
-        local_path = _save_local_temp(drive.download_to_bytes(doc.drive_file_id), doc.filename)
-    else:
-        upload_dir = WORKSPACE / "users" / user.id / "documents"
-        local_path = str(upload_dir / doc.filename)
-        if not Path(local_path).exists():
-            return RedirectResponse(url="/documents", status_code=303)
+    upload_dir = WORKSPACE / "users" / user.id / "documents"
+    local_path = str(upload_dir / doc.filename)
+    if not Path(local_path).exists():
+        return RedirectResponse(url="/documents", status_code=303)
 
     settings = {
         "extraction": {
@@ -361,19 +314,12 @@ async def upload_pdf(
     ext = Path(file.filename).suffix or ".pdf"
     saved_name = f"{uuid.uuid4().hex}{ext}"
 
-    if drive:
-        parent_id = drive.get_user_folder(user.id, "uploads")
-        drive_result = drive.upload_bytes(content, saved_name, parent_id, mime_type="application/pdf")
-        drive_id = drive_result["id"]
-        local_path = _save_local_temp(content, saved_name)
-    else:
-        upload_dir = WORKSPACE / "users" / user.id / "uploads"
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        local_path = str(upload_dir / saved_name)
-        Path(local_path).write_bytes(content)
-        drive_id = ""
+    upload_dir = WORKSPACE / "users" / user.id / "uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    local_path = str(upload_dir / saved_name)
+    Path(local_path).write_bytes(content)
 
-    doc = create_document(db, user_id=user.id, filename=saved_name, original_name=file.filename, file_size=len(content), drive_file_id=drive_id)
+    doc = create_document(db, user_id=user.id, filename=saved_name, original_name=file.filename, file_size=len(content))
 
     settings = {
         "extraction": {
@@ -442,8 +388,6 @@ async def download_pdf(job_id: str, user: User = Depends(require_user), db: Sess
     job = get_job(db, job_id, user.id)
     if not job:
         return HTMLResponse("PDF not available", status_code=404)
-    if drive and job.output_pdf_drive_id:
-        return RedirectResponse(url=drive.get_direct_link(job.output_pdf_drive_id), status_code=302)
     if job.output_pdf:
         pdf_path = Path(job.output_pdf)
         if pdf_path.exists():
@@ -498,26 +442,7 @@ async def share_job(
         return RedirectResponse(url=f"/job/{job_id}", status_code=303)
 
     name = public_name.strip() or job.filename
-    drive_id = ""
-    direct_link = ""
-
-    if drive and job.output_pdf_drive_id:
-        shared_folder = drive.get_shared_folder(job_id)
-        shared_file = drive.upload_bytes(
-            drive.download_to_bytes(job.output_pdf_drive_id),
-            f"{name}.pdf",
-            shared_folder,
-            mime_type="application/pdf",
-        )
-        drive_id = shared_file["id"]
-        drive.make_public(drive_id)
-        direct_link = drive.get_direct_link(drive_id)
-
-    shared = create_shared_document(db, job_id=job_id, user_id=user.id, public_name=name)
-    if drive_id:
-        shared.drive_file_id = drive_id
-        shared.direct_link = direct_link
-        db.commit()
+    create_shared_document(db, job_id=job_id, user_id=user.id, public_name=name)
 
     return RedirectResponse(url=f"/job/{job_id}", status_code=303)
 
@@ -530,8 +455,6 @@ async def unshare_job(
 ):
     shared = get_shared_by_job(db, job_id)
     if shared and shared.user_id == user.id:
-        if drive and shared.drive_file_id:
-            drive.delete_file(shared.drive_file_id)
         delete_shared_document(db, shared.id, user.id)
     return RedirectResponse(url=f"/job/{job_id}", status_code=303)
 
@@ -574,10 +497,6 @@ async def download_shared(shared_id: str, db: Session = Depends(get_db)):
     shared = get_shared_document(db, shared_id)
     if not shared:
         return HTMLResponse("Document not found", status_code=404)
-    if shared.direct_link:
-        return RedirectResponse(url=shared.direct_link, status_code=302)
-    if drive and shared.drive_file_id:
-        return RedirectResponse(url=drive.get_direct_link(shared.drive_file_id), status_code=302)
     if shared.job and shared.job.output_pdf:
         pdf_path = Path(shared.job.output_pdf)
         if pdf_path.exists():
@@ -627,7 +546,7 @@ async def update_settings(
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "storage": "google_drive" if drive else "local"}
+    return {"status": "ok", "storage": "local"}
 
 
 def _get_user_from_request(request: Request) -> User | None:

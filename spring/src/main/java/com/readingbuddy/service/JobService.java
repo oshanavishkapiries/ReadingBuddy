@@ -68,11 +68,10 @@ public class JobService {
         });
     }
 
-    public void markCompleted(String jobId, String outputPdf, String outputPdfDriveId) {
+    public void markCompleted(String jobId, String outputPdf) {
         jobRepository.findById(jobId).ifPresent(job -> {
             job.setStatus(JobStatus.COMPLETED);
             job.setOutputPdf(outputPdf);
-            job.setOutputPdfDriveId(outputPdfDriveId);
             jobRepository.save(job);
         });
         activeJobs.remove(jobId);

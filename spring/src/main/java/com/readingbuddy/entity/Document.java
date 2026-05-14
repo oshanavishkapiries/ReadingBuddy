@@ -40,9 +40,6 @@ public class Document {
     @Builder.Default
     private int pageCount = 0;
 
-    @Builder.Default
-    private String driveFileId = "";
-
     private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "document")

@@ -79,7 +79,7 @@ public class PipelineRunner {
                 usageService.updatePageCount(jobId, pages.size());
             }
 
-            jobService.markCompleted(jobId, outputPdf.toString(), "");
+            jobService.markCompleted(jobId, outputPdf.toString());
 
         } catch (Exception e) {
             jobService.markFailed(jobId, e.getMessage());

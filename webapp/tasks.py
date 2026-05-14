@@ -101,25 +101,6 @@ def run_pipeline(job_id: str, pdf_path: str, settings: dict):
             progress_callback=callback,
         )
 
-        drive_id = ""
-        try:
-            from webapp.gdrive import get_drive_manager
-            drive = get_drive_manager()
-            if drive and output_pdf.exists():
-                user_id = settings.get("_user_id", "")
-                if user_id:
-                    parent_id = drive.get_user_folder(user_id, "outputs")
-                else:
-                    parent_id = drive.get_workspace_folder(job_id)
-                result = drive.upload_file(str(output_pdf), parent_id, mime_type="application/pdf")
-                drive_id = result["id"]
-                if Path(pdf_path).exists():
-                    Path(pdf_path).unlink()
-                shutil.rmtree(job_workspace, ignore_errors=True)
-                print(f"Cleaned up workspace for job {job_id}")
-        except Exception as e:
-            print(f"Drive upload failed for job {job_id}: {e}")
-
         user_id = settings.get("_user_id", "")
         if user_id:
             try:
@@ -135,7 +116,7 @@ def run_pipeline(job_id: str, pdf_path: str, settings: dict):
             except Exception as e:
                 print(f"Failed to update usage log: {e}")
 
-        update_job_status(db, job_id, "completed", output_pdf=str(output_pdf), output_pdf_drive_id=drive_id)
+        update_job_status(db, job_id, "completed", output_pdf=str(output_pdf))
         with _lock:
             active_jobs.pop(job_id, None)
 

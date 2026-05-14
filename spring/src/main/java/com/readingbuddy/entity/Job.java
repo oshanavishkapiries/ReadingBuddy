@@ -63,9 +63,6 @@ public class Job {
     private String outputPdf = "";
 
     @Builder.Default
-    private String outputPdfDriveId = "";
-
-    @Builder.Default
     private int pageCount = 0;
 
     private LocalDateTime createdAt;
