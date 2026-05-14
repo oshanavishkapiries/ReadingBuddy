@@ -20,7 +20,7 @@
                     <label class="form-label">OpenRouter API Key</label>
                     <input type="password" name="openrouterApiKey" class="form-control"
                            th:value="${currentUser.openrouterApiKey}">
-                    <div class="form-text">Leave blank to use the site's shared key (3 translations/day).</div>
+                    <div class="form-text">Leave blank to use the site's shared key (daily limit applies).</div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Default Model</label>
@@ -77,10 +77,27 @@
             </div>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Translation Temperature</label>
-            <input type="number" step="0.1" min="0" max="2" name="translationTemperature"
-                   class="form-control" th:value="${currentUser.translationTemperature}">
+        <div class="card mb-3">
+            <div class="card-header fw-semibold">Translation</div>
+            <div class="card-body row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Target Language</label>
+                    <select name="translationLanguage" class="form-select">
+                        <option value="sinhala"  th:selected="${currentUser.translationLanguage == 'sinhala'}">Sinhala</option>
+                        <option value="tamil"    th:selected="${currentUser.translationLanguage == 'tamil'}">Tamil</option>
+                        <option value="hindi"    th:selected="${currentUser.translationLanguage == 'hindi'}">Hindi</option>
+                        <option value="chinese"  th:selected="${currentUser.translationLanguage == 'chinese'}">Chinese (Simplified)</option>
+                        <option value="japanese" th:selected="${currentUser.translationLanguage == 'japanese'}">Japanese</option>
+                        <option value="korean"   th:selected="${currentUser.translationLanguage == 'korean'}">Korean</option>
+                        <option value="arabic"   th:selected="${currentUser.translationLanguage == 'arabic'}">Arabic</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Temperature</label>
+                    <input type="number" step="0.1" min="0" max="2" name="translationTemperature"
+                           class="form-control" th:value="${currentUser.translationTemperature}">
+                </div>
+            </div>
         </div>
 
         <button type="submit" class="btn btn-primary">Save Settings</button>

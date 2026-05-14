@@ -12,7 +12,7 @@
     <div class="card">
         <h2>Upload Document</h2>
         {% if not user.openrouter_api_key and has_backend_key %}
-        <div class="plan-badge">Free Plan &middot; {{ usage_count }}/3 today</div>
+        <div class="plan-badge">Free Plan &middot; {{ usage_count }}/{{ daily_limit }} today</div>
         {% endif %}
         <form action="/documents/upload" method="post" enctype="multipart/form-data" class="upload-form">
             <div class="form-group">
@@ -55,15 +55,27 @@
                         <form action="/documents/{{ doc.id }}/translate" method="post" class="tool-form">
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="model-{{ doc.id }}">AI Model</label>
-                                    <input type="text" id="model-{{ doc.id }}" name="model" value="{{ user.openrouter_model }}" placeholder="openai/gpt-4o-mini">
+                                    <label for="lang-{{ doc.id }}">Target Language</label>
+                                    <select id="lang-{{ doc.id }}" name="translation_language">
+                                        <option value="sinhala"  {% if user.translation_language == "sinhala"  %}selected{% endif %}>Sinhala</option>
+                                        <option value="tamil"    {% if user.translation_language == "tamil"    %}selected{% endif %}>Tamil</option>
+                                        <option value="hindi"    {% if user.translation_language == "hindi"    %}selected{% endif %}>Hindi</option>
+                                        <option value="chinese"  {% if user.translation_language == "chinese"  %}selected{% endif %}>Chinese (Simplified)</option>
+                                        <option value="japanese" {% if user.translation_language == "japanese" %}selected{% endif %}>Japanese</option>
+                                        <option value="korean"   {% if user.translation_language == "korean"   %}selected{% endif %}>Korean</option>
+                                        <option value="arabic"   {% if user.translation_language == "arabic"   %}selected{% endif %}>Arabic</option>
+                                    </select>
                                 </div>
+                                <div class="form-group">
+                                    <label for="model-{{ doc.id }}">AI Model</label>
+                                    <input type="text" id="model-{{ doc.id }}" name="model" value="{{ user.openrouter_model }}" placeholder="google/gemini-2.5-flash">
+                                </div>
+                            </div>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label for="temperature-{{ doc.id }}">Temperature</label>
                                     <input type="number" id="temperature-{{ doc.id }}" name="temperature" value="{{ user.translation_temperature }}" min="0" max="1" step="0.1">
                                 </div>
-                            </div>
-                            <div class="form-row">
                                 <div class="form-group">
                                     <label for="dpi-{{ doc.id }}">DPI</label>
                                     <input type="number" id="dpi-{{ doc.id }}" name="dpi" value="{{ user.extraction_dpi }}" min="150" max="600">

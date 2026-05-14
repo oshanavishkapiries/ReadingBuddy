@@ -15,7 +15,6 @@ import java.util.Optional;
 public class SharedDocumentService {
 
     @Autowired private SharedDocumentRepository sharedDocumentRepository;
-    @Autowired private DriveService driveService;
 
     public Optional<SharedDocument> findById(String id) {
         return sharedDocumentRepository.findById(id);
@@ -39,11 +38,6 @@ public class SharedDocumentService {
     }
 
     public void unshare(SharedDocument shared) {
-        if (driveService.isEnabled()
-                && shared.getDriveFileId() != null
-                && !shared.getDriveFileId().isEmpty()) {
-            driveService.deleteFile(shared.getDriveFileId());
-        }
         sharedDocumentRepository.delete(shared);
     }
 

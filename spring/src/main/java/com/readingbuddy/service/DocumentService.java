@@ -20,7 +20,6 @@ import java.util.UUID;
 public class DocumentService {
 
     @Autowired private DocumentRepository documentRepository;
-    @Autowired private DriveService driveService;
 
     @Value("${app.workspace}")
     private String workspace;
@@ -38,18 +37,6 @@ public class DocumentService {
         String ext = getExtension(file.getOriginalFilename());
         String savedName = UUID.randomUUID().toString().replace("-", "") + ext;
 
-        if (driveService.isEnabled()) {
-            String parentId = driveService.getUserFolder(user.getId(), "uploads");
-            String driveId = driveService.uploadBytes(content, savedName, parentId);
-            return documentRepository.save(Document.builder()
-                    .user(user)
-                    .filename(savedName)
-                    .originalName(file.getOriginalFilename())
-                    .fileSize(content.length)
-                    .driveFileId(driveId)
-                    .build());
-        }
-
         Path uploadDir = Path.of(workspace, "users", user.getId(), "documents");
         Files.createDirectories(uploadDir);
         Files.write(uploadDir.resolve(savedName), content);
@@ -63,12 +50,7 @@ public class DocumentService {
     }
 
     public void deleteDocument(String docId, User user) {
-        documentRepository.findByIdAndUserId(docId, user.getId()).ifPresent(doc -> {
-            if (driveService.isEnabled() && doc.getDriveFileId() != null && !doc.getDriveFileId().isEmpty()) {
-                driveService.deleteFile(doc.getDriveFileId());
-            }
-            documentRepository.delete(doc);
-        });
+        documentRepository.findByIdAndUserId(docId, user.getId()).ifPresent(documentRepository::delete);
     }
 
     public Path resolveLocalPath(Document doc, User user) throws IOException {

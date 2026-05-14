@@ -25,6 +25,9 @@ public class DashboardController extends BaseController {
     @Value("${app.openrouter-api-key:}")
     private String backendApiKey;
 
+    @Value("${app.daily-limit}")
+    private int dailyLimit;
+
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
         var user = securityUtils.requireCurrentUser();
@@ -43,6 +46,7 @@ public class DashboardController extends BaseController {
         model.addAttribute("documents", documentService.listDocuments(user.getId(), 20));
         model.addAttribute("hasBackendKey", !backendApiKey.isBlank());
         model.addAttribute("usageCount", usageCount);
+        model.addAttribute("dailyLimit", dailyLimit);
 
         return "dashboard";
     }

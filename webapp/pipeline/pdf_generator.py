@@ -153,7 +153,7 @@ def markdown_to_html(md_text: str) -> str:
 
 
 def build_html(markdown_dir: Path, css: str, image_root: Optional[Path]) -> str:
-    md_files = sorted(markdown_dir.glob("*.md"), key=natural_sort_key)
+    md_files = sorted(markdown_dir.glob("page_*.md"), key=natural_sort_key)
     if not md_files:
         raise FileNotFoundError(f"No .md files found in {markdown_dir}")
     parts = []

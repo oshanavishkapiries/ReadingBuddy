@@ -19,10 +19,11 @@ class User(Base):
     extraction_dpi = Column(Integer, default=300)
     extraction_ocr_mode = Column(String, default="auto")
     extraction_lang = Column(String, default="eng")
+    translation_language = Column(String, default="sinhala")
     translation_temperature = Column(Float, default=0.2)
     pdf_page_size = Column(String, default="A4")
     pdf_margin = Column(String, default="18mm")
-    pdf_font_size = Column(Float, default=16.5)
+    pdf_font_size = Column(Float, default=10.0)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -40,7 +41,6 @@ class Document(Base):
     original_name = Column(String, nullable=False)
     file_size = Column(Integer, default=0)
     page_count = Column(Integer, default=0)
-    drive_file_id = Column(String, default="")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="documents")
@@ -63,7 +63,6 @@ class Job(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     output_pdf = Column(String, default="")
-    output_pdf_drive_id = Column(String, default="")
     page_count = Column(Integer, default=0)
 
     user = relationship("User", back_populates="jobs")
@@ -106,8 +105,8 @@ def update_user_settings(db: Session, user_id: str, settings: dict) -> User:
     return user
 
 
-def create_document(db: Session, user_id: str, filename: str, original_name: str, file_size: int = 0, drive_file_id: str = "") -> Document:
-    doc = Document(user_id=user_id, filename=filename, original_name=original_name, file_size=file_size, drive_file_id=drive_file_id)
+def create_document(db: Session, user_id: str, filename: str, original_name: str, file_size: int = 0) -> Document:
+    doc = Document(user_id=user_id, filename=filename, original_name=original_name, file_size=file_size)
     db.add(doc)
     db.commit()
     db.refresh(doc)
@@ -170,8 +169,6 @@ class SharedDocument(Base):
     job_id = Column(String, ForeignKey("jobs.id"), nullable=False, index=True, unique=True)
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     public_name = Column(String, nullable=False)
-    drive_file_id = Column(String, default="")
-    direct_link = Column(String, default="")
     likes = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -217,14 +214,12 @@ def like_shared_document(db: Session, shared_id: str) -> SharedDocument | None:
     return shared
 
 
-def update_job_status(db: Session, job_id: str, status: str, error: str = "", output_pdf: str = "", output_pdf_drive_id: str = ""):
+def update_job_status(db: Session, job_id: str, status: str, error: str = "", output_pdf: str = ""):
     job = db.query(Job).filter(Job.id == job_id).first()
     if job:
         job.status = status
         job.error = error
         job.output_pdf = output_pdf
-        if output_pdf_drive_id:
-            job.output_pdf_drive_id = output_pdf_drive_id
         if status == "completed":
             job.page_count = job.settings.get("page_count", job.page_count)
         job.updated_at = datetime.utcnow()

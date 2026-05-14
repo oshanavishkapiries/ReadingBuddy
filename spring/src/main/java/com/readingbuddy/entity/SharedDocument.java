@@ -32,12 +32,6 @@ public class SharedDocument {
     private String publicName;
 
     @Builder.Default
-    private String driveFileId = "";
-
-    @Builder.Default
-    private String directLink = "";
-
-    @Builder.Default
     private int likes = 0;
 
     private LocalDateTime createdAt;

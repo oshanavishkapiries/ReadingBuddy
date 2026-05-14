@@ -25,14 +25,15 @@ public class SettingsController extends BaseController {
 
     @PostMapping("/settings")
     public String updateSettings(@RequestParam(defaultValue = "") String openrouterApiKey,
-                                 @RequestParam(defaultValue = "openai/gpt-4o-mini") String openrouterModel,
+                                 @RequestParam(defaultValue = "google/gemini-2.5-flash") String openrouterModel,
                                  @RequestParam(defaultValue = "300") int extractionDpi,
                                  @RequestParam(defaultValue = "auto") String extractionOcrMode,
                                  @RequestParam(defaultValue = "eng") String extractionLang,
+                                 @RequestParam(defaultValue = "sinhala") String translationLanguage,
                                  @RequestParam(defaultValue = "0.2") double translationTemperature,
                                  @RequestParam(defaultValue = "A4") String pdfPageSize,
                                  @RequestParam(defaultValue = "18mm") String pdfMargin,
-                                 @RequestParam(defaultValue = "16.5") double pdfFontSize,
+                                 @RequestParam(defaultValue = "10.0") double pdfFontSize,
                                  HttpServletResponse response) {
 
         User user = securityUtils.requireCurrentUser();
@@ -41,6 +42,7 @@ public class SettingsController extends BaseController {
         user.setExtractionDpi(extractionDpi);
         user.setExtractionOcrMode(extractionOcrMode);
         user.setExtractionLang(extractionLang);
+        user.setTranslationLanguage(translationLanguage);
         user.setTranslationTemperature(translationTemperature);
         user.setPdfPageSize(pdfPageSize);
         user.setPdfMargin(pdfMargin);
